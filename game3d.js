@@ -428,7 +428,7 @@
       scene.add(mesh);
       bosses.push({
         mesh, baseSpeed: 3.8, speed:3.8, catchDist: 0.85,
-        lastBubbleAt: 0, dialogue: DIALOGUE3D.baby, stun: 0, rageMult: 1, spot: null,
+        lastBubbleAt: 0, dialogue: DIALOGUE3D.baby, stun: 0, rageMult: 1, spot: null, label: '5살 팀장님',
       });
     } else {
       // 십자 교차로(z≈-24)는 폭이 다른 구간이라 피하고, 메인 복도 + 오픈 큐비클존 입구 쪽에 분산
@@ -440,7 +440,7 @@
         scene.add(mesh);
         bosses.push({
           mesh, baseSpeed: 2.6 + Math.random()*0.4, speed:2.6, catchDist: 0.85,
-          lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0, rageMult: 1, spot: null,
+          lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0, rageMult: 1, spot: null, label: `팀장님 ${i+1}`,
         });
       });
     }
@@ -463,28 +463,70 @@
     ],
   };
 
-  /* ---- speech bubble (HTML overlay projected from 3D head position) ---- */
-  function spawnSpeechBubble(boss, override){
-    const text = override || boss.dialogue[Math.floor(Math.random()*boss.dialogue.length)];
+  /* ---- chatter ----
+     The lines are half the game, and you spend the game running away, so a bubble pinned
+     over a head behind you is a line nobody ever reads. A speaker you can actually see
+     keeps the floating bubble; anyone off screen drops into a subtitle rail with the
+     direction they are shouting from. */
+  const RAIL_MAX = 3, PINNED_MS = 1900, RAIL_MS = 2900;
+
+  function headPoint(mesh){
+    const p = mesh.position.clone();
+    p.y += (mesh.userData.headY || 1.4) + 0.3;
+    return p;
+  }
+
+  /* Where is this voice relative to where you are looking? */
+  function bearingTag(pos){
+    const f = camera.getWorldDirection(new THREE.Vector3());
+    const dx = pos.x - camera.position.x, dz = pos.z - camera.position.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const ahead = (f.x*dx + f.z*dz)/len;
+    // right = forward × up = (-f.z, 0, f.x)
+    const side = (-f.z*dx + f.x*dz)/len;
+    if (ahead > .5) return '앞';
+    if (ahead < -.5) return '뒤';
+    return side > 0 ? '오른쪽' : '왼쪽';
+  }
+
+  function spawnSpeechBubble(speaker, override){
+    let text = override;
+    if (!text){
+      // Five people shouting the identical line at once reads as a bug, not a gag.
+      const live = new Set(speechBubbles.map(b=> b.text));
+      const fresh = speaker.dialogue.filter(t=> !live.has(t));
+      const pool = fresh.length ? fresh : speaker.dialogue;
+      text = pool[Math.floor(Math.random()*pool.length)];
+    }
+    const head = headPoint(speaker.mesh);
+    const ndc = head.clone().project(camera);
+    // A little inside the edges, so a speaker half off screen reads as off screen.
+    const onScreen = ndc.z <= 1 && Math.abs(ndc.x) < .92 && Math.abs(ndc.y) < .88;
+
     const el = document.createElement('div');
-    el.className = 'speech-bubble-3d';
-    el.textContent = text;
-    el.style.position = 'absolute';
-    el.style.background = '#fff3df';
-    el.style.color = '#1a1106';
-    el.style.fontWeight = '800';
-    el.style.fontSize = '12px';
-    el.style.padding = '6px 10px';
-    el.style.borderRadius = '10px';
-    el.style.maxWidth = '140px';
-    el.style.textAlign = 'center';
-    el.style.lineHeight = '1.3';
-    el.style.zIndex = '350';
-    el.style.transform = 'translate(-50%,-100%)';
-    el.style.pointerEvents = 'none';
-    el.style.boxShadow = '0 4px 12px rgba(0,0,0,.4)';
-    document.getElementById('screen-game').appendChild(el);
-    speechBubbles.push({ el, boss, expireAt: performance.now()+1500 });
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = onScreen ? (speaker.label || '팀장님')
+      : `${speaker.label || '팀장님'} · ${bearingTag(speaker.mesh.position)}`;
+    el.appendChild(who);
+    el.appendChild(document.createTextNode(text));
+
+    if (onScreen){
+      el.className = 'speech-bubble-3d';
+      document.getElementById('screen-game').appendChild(el);
+    } else {
+      el.className = 'chatter';
+      const rail = document.getElementById('chatter-rail');
+      rail.appendChild(el);
+      // Keep the rail short enough to read at a glance while sprinting.
+      while (rail.children.length > RAIL_MAX){
+        const oldest = rail.firstChild;
+        speechBubbles = speechBubbles.filter(b=> b.el !== oldest);
+        oldest.remove();
+      }
+    }
+    speechBubbles.push({ el, speaker, text, pinned: onScreen,
+      expireAt: performance.now() + (onScreen ? PINNED_MS : RAIL_MS) });
   }
 
   function updateSpeechBubbles(){
@@ -493,17 +535,20 @@
     const now = performance.now();
     speechBubbles = speechBubbles.filter(b=>{
       if (now > b.expireAt){ b.el.remove(); return false; }
-      const headPos = b.boss.mesh.position.clone();
-      headPos.y += (b.boss.mesh.userData.headY || 1.4) + 0.3;
-      headPos.project(camera);
-      if (headPos.z > 1){ b.el.style.display='none'; return true; }
+      if (!b.pinned) return true;               // the rail lays itself out
+      const p = headPoint(b.speaker.mesh).project(camera);
+      if (p.z > 1){ b.el.style.display='none'; return true; }
       b.el.style.display='block';
-      const sx = (headPos.x*0.5+0.5)*w;
-      const sy = (-headPos.y*0.5+0.5)*h;
-      b.el.style.left = sx+'px';
-      b.el.style.top = sy+'px';
+      b.el.style.left = ((p.x*0.5+0.5)*w)+'px';
+      b.el.style.top = ((-p.y*0.5+0.5)*h)+'px';
       return true;
     });
+  }
+
+  function clearChatter(){
+    speechBubbles.forEach(b=> b.el.remove());
+    speechBubbles = [];
+    document.getElementById('chatter-rail').innerHTML = '';
   }
 
   /* ---- jump ---- */
@@ -622,7 +667,7 @@
     mesh.position.set(x, 0, z);
     mesh.rotation.y = Math.atan2(faceX - x, faceZ - z);
     scene.add(mesh);
-    chief = { mesh, dialogue: [], target: null, flee: !!flee, lastBubbleAt: 0 };
+    chief = { mesh, dialogue: [], label: '사장님', target: null, flee: !!flee, lastBubbleAt: 0 };
     return chief;
   }
   function despawnChief(){
@@ -920,8 +965,7 @@
     document.getElementById('summon-cutin').classList.remove('show');
     document.getElementById('coffee-status').textContent='쏟기 준비';document.getElementById('coffee-fill').style.width='100%';
     document.getElementById('ability-toast').classList.remove('show');
-    speechBubbles.forEach(b=>b.el.remove());
-    speechBubbles = [];
+    clearChatter();
 
     gameActive = true;
     gameDuration = state.mode === 'baby' ? 42000 : 50000;
@@ -978,7 +1022,7 @@
 
   function endGame3D(survived, elapsedMs){
     gameActive = false;
-    speechBubbles.forEach(b=>b.el.remove()); speechBubbles = [];
+    clearChatter();
     clearDoors();
     document.getElementById('summon-cutin').classList.remove('show');
     cancelAnimationFrame(gameRafId);

@@ -17,7 +17,7 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
  // In-memory instrumentation only: exercises production functions without adding a debug API.
  await page.route('**/game3d.js',async route=>{
   const response=await route.fetch();let body=await response.text();
-  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
+  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},say:(i,t)=>spawnSpeechBubble(bosses[i],t),hush:()=>clearChatter(),calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
   await route.fulfill({response,body});
  });
  async function lock(){await page.locator('#pointer-hint').click();await page.waitForFunction(()=>__qa.snapshot().mouseLocked && __qa.snapshot().elapsedGame>0);}
@@ -101,6 +101,25 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   await page.keyboard.press('Space');await page.waitForFunction(()=>!__qa.snapshot().grounded);assert.equal((await page.evaluate(()=>__qa.snapshot())).grounded,false);
   await page.waitForFunction(()=>__qa.snapshot().grounded);
   await page.keyboard.down('Shift');await page.keyboard.down('d');await page.waitForFunction(()=>__qa.snapshot().stamina<.99);await page.keyboard.up('d');await page.keyboard.up('Shift');
+  // Chatter routing: the lines are the joke, so a line from behind must still be readable.
+  // Paused, so the pursuers' own timed chatter cannot race the assertions.
+  await page.keyboard.press('Escape');await page.waitForTimeout(120);
+  await page.evaluate(()=>{__qa.place(0,-24);__qa.aim(0);__qa.step(.001);__qa.boss(0,0,-20);__qa.hush();__qa.say(0,'뒤에서 하는 말');});
+  assert.equal(await page.locator('#chatter-rail .chatter').count(),1,'an unseen speaker becomes a subtitle');
+  assert.match(await page.locator('#chatter-rail .chatter').textContent(),/뒤/,'the subtitle says which way to look');
+  assert.equal(await page.locator('#screen-game > .speech-bubble-3d').count(),0,'nothing is pinned to an unseen head');
+  await page.evaluate(()=>{__qa.boss(0,0,-28);__qa.say(0,'앞에서 하는 말');});
+  assert.equal(await page.locator('#screen-game > .speech-bubble-3d').count(),1,'a visible speaker keeps its head bubble');
+  assert.equal(await page.locator('#chatter-rail .chatter').count(),1,'and does not also fill the rail');
+  // The rail must stay short enough to read while sprinting.
+  await page.evaluate(()=>{__qa.boss(0,0,-20);__qa.hush();for(let i=0;i<6;i++)__qa.say(0,'웅성 '+i);});
+  assert.equal(await page.locator('#chatter-rail .chatter').count(),3,'the rail keeps only the newest few lines');
+  assert.match(await page.locator('#chatter-rail').textContent(),/웅성 5/,'and keeps the newest, not the oldest');
+  await page.evaluate(()=>{__qa.hush();});
+  assert.equal(await page.locator('#chatter-rail .chatter').count(),0,'chatter clears between rounds');
+  console.log('PASS chatter: off-screen lines become subtitles with a bearing, visible ones stay pinned, rail capped');
+  await page.waitForTimeout(1100);await lock();
+
   // 사장님 호출: an empty gauge does nothing, a full one empties the floor into the room you face.
   await page.evaluate(()=>{__qa.place(0,-24);__qa.aim(Math.PI);for(let i=0;i<5;i++)__qa.boss(i,i*.7-1.4,-20);__qa.charge(.6);});
   await page.keyboard.press('q');await page.waitForTimeout(150);

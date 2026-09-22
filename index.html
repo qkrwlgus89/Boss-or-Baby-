@@ -244,6 +244,29 @@
   kbd{display:grid;place-items:center;font:900 22px inherit;background:#f2f5e9;color:#20394a;width:40px;height:42px;border-radius:4px;box-shadow:0 4px 0 #84989c}
   .pointer-hint{background:#102a3dbb;backdrop-filter:blur(5px)}.pointer-hint .big{font-size:34px;font-style:italic}.pointer-hint .small{max-width:460px;color:#cadbe5;line-height:1.9}.tap-instruction{font-size:11px;bottom:22px;color:#d4e6ef;text-shadow:0 2px 6px #000}
   #ability-toast{position:absolute;top:25%;z-index:350;padding:12px 24px;background:#16334be8;border-bottom:2px solid #6de4cd;border-radius:4px;opacity:0;pointer-events:none;font-weight:700;font-size:14px}#ability-toast.show{animation:toast 3s both}@keyframes toast{0%,100%{opacity:0;transform:translateY(8px)}10%,85%{opacity:1;transform:translateY(0)}}
+  /* Chatter. A line spoken by someone you can see floats over their head; a line from
+     behind you drops into the subtitle rail instead, so running away never costs the joke. */
+  .speech-bubble-3d{
+    position:absolute; z-index:340; transform:translate(-50%,-100%); pointer-events:none;
+    background:#fff3df; color:#1a1106; font-weight:800; font-size:14px; line-height:1.35;
+    padding:8px 13px; border-radius:11px; max-width:210px; text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+  }
+  #chatter-rail{
+    position:absolute; left:50%; transform:translateX(-50%); bottom:150px; z-index:340;
+    width:min(620px,70vw); display:flex; flex-direction:column; align-items:center; gap:7px;
+    pointer-events:none;
+  }
+  .chatter{
+    background:#fff3dfee; color:#1a1106; font-weight:800; font-size:16px; line-height:1.35;
+    padding:9px 16px; border-radius:11px; max-width:100%; text-align:center;
+    box-shadow:0 5px 16px rgba(0,0,0,.5); animation:chatter-in .18s ease-out both;
+  }
+  @keyframes chatter-in{ from{opacity:0; transform:translateY(7px);} to{opacity:1; transform:none;} }
+  .speech-bubble-3d .who, .chatter .who{
+    display:block; font-size:11px; font-weight:700; letter-spacing:.02em;
+    color:#96602c; margin-bottom:2px;
+  }
   /* Ultimate gauge. The card only lights up when Q will actually do something. */
   .ult-track{height:5px;background:#4a5f6d;width:160px;margin-top:9px}#ult-fill{height:100%;width:25%;background:#ffac82;transition:width .12s linear}
   .ability-card.ready{border-bottom-color:#ffd987;box-shadow:0 0 0 1px #ffd98799,0 8px 30px #ffac8244;animation:ult-ready 1.4s ease-in-out infinite}
@@ -260,7 +283,8 @@
   #summon-cutin em{display:block;font-style:normal;font-size:13px;font-weight:700;color:#cfe6ef;text-shadow:0 2px 6px #000}
   #summon-cutin.show{animation:cutin 2.6s both}
   @keyframes cutin{0%{opacity:0;transform:translateY(14px) scale(.96)}12%,72%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(1)}}
-  @media(max-width:800px){.mission-chip{top:100px;left:18px}.hud-top3d{width:90vw}.runner-card{left:12px;padding:12px}.ability-card{right:12px;padding:12px}.runner-icon{display:none}.ability-card small{display:none}.tap-instruction{font-size:9px}.stamina-track{width:100px}}
+  @media(max-width:800px){.mission-chip{top:100px;left:18px}.hud-top3d{width:90vw}.runner-card{left:12px;padding:12px}.ability-card{right:12px;padding:12px}.runner-icon{display:none}.ability-card small{display:none}.tap-instruction{font-size:9px}.stamina-track{width:100px}
+    #chatter-rail{width:88vw;bottom:210px;gap:5px}.chatter{font-size:14px;padding:7px 12px}.speech-bubble-3d{font-size:12.5px;max-width:170px}}
 </style>
 </head>
 <body>
@@ -351,6 +375,7 @@
 <div class="coffee-card"><b id="coffee-status">쏟기 준비</b><strong>커피 쏟기</strong><small>좌클릭 / F · 전방 4.8m · 3초 정지</small><div class="coffee-track"><div id="coffee-fill"></div></div></div>
     <div class="ability-card" id="ability-card"><kbd>Q</kbd><div><strong>사장님 호출</strong><small id="ability-sub">바라보는 회의실로 전원 소집</small><div class="ult-track"><div id="ult-fill"></div></div></div><b id="ability-status">25%</b></div>
     <div id="ability-toast" role="status"></div>
+    <div id="chatter-rail" role="log" aria-live="polite"></div>
     <div id="summon-cutin" role="status"><span>사내 전체 방송</span><strong>사장님 긴급 소집</strong><em>전원 회의실로 — 지금 바로</em></div>
     <div class="pointer-hint" id="pointer-hint">
       <div class="big">클릭하고, 칼퇴하세요</div>

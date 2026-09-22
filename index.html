@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<link rel="icon" href="data:,">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>팀장님이 온다 — 3D</title>
@@ -19,9 +20,9 @@
     background:var(--bg-dark);
     color:var(--cream);
     font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-    overflow:hidden;
+    overflow:clip;
   }
-  #app{ position:relative; width:100%; height:100vh; overflow:hidden; }
+  #app{ position:relative; width:100%; height:100vh; overflow:clip; }
 
   .screen{
     position:absolute; inset:0;
@@ -222,6 +223,44 @@
   button:focus-visible, .mode-card:focus-visible, .opt-chip:focus-visible{
     outline:2px solid var(--warn-yellow); outline-offset:2px;
   }
+
+  :root{--bg-dark:#101f30;--bg-panel:#20364b;--warn-yellow:#6de4cd;--alert-red:#ff8262;--cream:#eff5f5;--line:rgba(148,201,220,.22)}
+  #screen-title{background:radial-gradient(ellipse at 70% 30%,#31566a 0,transparent 56%),linear-gradient(125deg,#101e30,#183c4b)}
+  #screen-title::before{content:'18:00';position:absolute;right:-2vw;bottom:4vh;font-size:30vw;font-weight:900;font-style:italic;letter-spacing:-.08em;color:#83d7d3;opacity:.055;pointer-events:none}
+  .title-stack{max-width:740px}.title-main{font-size:clamp(54px,9vw,102px);letter-spacing:-.075em;line-height:1.02;text-shadow:0 5px 0 #0f2737;transform:skew(-5deg)}
+  .title-warn-tape{background:#6de4cd;color:#142b3a;letter-spacing:.14em;border-radius:3px;padding:8px 18px}
+  .title-tag3d{margin:24px 0 18px;letter-spacing:.2em;font-size:12px}.title-sub{color:#b6cbd7}
+  .btn-start{background:#ff8262;color:#142b3a;animation:none;box-shadow:0 5px 0 #994e3e;border-radius:3px;transform:skew(-5deg)}
+  .btn-start:hover{background:#ffac82;transform:skew(-5deg) translateY(-2px)}
+  .mode-card{background:linear-gradient(145deg,#2b4960,#182c40);border-radius:7px}.mode-emoji{font-size:64px}.mode-desc{color:#b7cad6}
+  .cust-wrap{max-width:800px}.cust-preview-zone{border:1px solid var(--line);border-radius:12px}.cust-header{padding-bottom:16px}.cust-controls{padding-top:20px}.option-row{justify-content:center}.tab-row{justify-content:center}
+  .hud-top3d{left:50%;right:auto;transform:translateX(-50%);width:min(440px,50vw);top:24px;padding:12px 18px;background:#122b3ce6;border:1px solid #7196a74d;border-radius:5px}
+  .hud-label{min-width:60px}.timer-label{font-size:23px;color:#f0f9ff;min-width:76px;font-variant-numeric:tabular-nums}.gauge-track{height:5px;border:0}.gauge-fill{background:linear-gradient(90deg,#ffd987,#ff775f)}
+  .crosshair{width:5px;height:5px;background:white;box-shadow:0 0 0 4px #112a3655,0 0 0 5px #e0fffaaa}
+  .debug-panel{display:none}.mission-chip{position:absolute;left:28px;top:30px;z-index:300;display:grid;gap:7px;pointer-events:none}.mission-chip span{font-size:10px;letter-spacing:.17em;color:#8bf0d8}.mission-chip strong{font-size:13px;text-shadow:0 2px 6px #000}
+  .runner-card,.ability-card{position:absolute;bottom:58px;z-index:300;display:flex;align-items:center;gap:14px;padding:16px 20px;background:#132c40ed;border:1px solid #648d9c66;border-radius:6px;box-shadow:0 8px 24px #0003;pointer-events:none}
+  .runner-card{left:28px;border-left:4px solid #6de4cd}.ability-card{right:28px;border-bottom:3px solid #ffac82}.runner-icon{font-size:32px;color:#6de4cd}.runner-card strong,.ability-card strong{display:block;font-size:16px}.runner-card small,.ability-card small{display:block;color:#a8c0cf;font-size:10px;margin:4px 0}.runner-card b,.ability-card b{font-size:11px;color:#8ee8d6}.stamina-track{height:5px;background:#446072;width:150px;margin-top:9px}#stamina-fill{height:100%;background:#6de4cd;width:100%}
+  .coffee-card{position:absolute;right:28px;bottom:166px;z-index:300;width:273px;background:#173648ed;border:1px solid #638d9c;border-left:4px solid #d8a76e;padding:14px 18px;border-radius:6px;pointer-events:none}.coffee-card strong{font-size:16px}.coffee-card small{display:block;font-size:11px;color:#b6d1d5;margin:5px 0}.coffee-card b{float:right;color:#ffc98d;font-size:12px}.coffee-track{height:4px;background:#465b62;margin-top:9px}#coffee-fill{height:100%;background:#e7bc87;width:100%}
+  kbd{display:grid;place-items:center;font:900 22px inherit;background:#f2f5e9;color:#20394a;width:40px;height:42px;border-radius:4px;box-shadow:0 4px 0 #84989c}
+  .pointer-hint{background:#102a3dbb;backdrop-filter:blur(5px)}.pointer-hint .big{font-size:34px;font-style:italic}.pointer-hint .small{max-width:460px;color:#cadbe5;line-height:1.9}.tap-instruction{font-size:11px;bottom:22px;color:#d4e6ef;text-shadow:0 2px 6px #000}
+  #ability-toast{position:absolute;top:25%;z-index:350;padding:12px 24px;background:#16334be8;border-bottom:2px solid #6de4cd;border-radius:4px;opacity:0;pointer-events:none;font-weight:700;font-size:14px}#ability-toast.show{animation:toast 3s both}@keyframes toast{0%,100%{opacity:0;transform:translateY(8px)}10%,85%{opacity:1;transform:translateY(0)}}
+  /* Ultimate gauge. The card only lights up when Q will actually do something. */
+  .ult-track{height:5px;background:#4a5f6d;width:160px;margin-top:9px}#ult-fill{height:100%;width:25%;background:#ffac82;transition:width .12s linear}
+  .ability-card.ready{border-bottom-color:#ffd987;box-shadow:0 0 0 1px #ffd98799,0 8px 30px #ffac8244;animation:ult-ready 1.4s ease-in-out infinite}
+  .ability-card.ready kbd{background:#ffd987;color:#20394a}.ability-card.ready #ult-fill{background:#ffd987}.ability-card.ready #ability-status{color:#ffd987}
+  .ability-card.firing{border-bottom-color:#6de4cd}.ability-card.firing #ult-fill{background:#6de4cd}
+  @keyframes ult-ready{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  /* Announcement cut-in: the ultimate has no character on screen, so this carries it. */
+  /* The office ceiling behind this is the brightest part of the frame, so the cut-in
+     carries its own soft backing plate instead of relying on text shadow alone. */
+  #summon-cutin{position:absolute;left:0;right:0;top:27%;z-index:360;text-align:center;opacity:0;pointer-events:none;padding:30px 16px;
+    background:radial-gradient(ellipse 54% 150% at 50% 50%,rgba(6,18,28,.88) 0%,rgba(6,18,28,.62) 46%,rgba(6,18,28,0) 74%)}
+  #summon-cutin span{display:block;font-size:11px;letter-spacing:.32em;color:#ffd987;text-shadow:0 2px 6px #000}
+  #summon-cutin strong{display:block;margin:8px 0 6px;font-size:clamp(28px,4.4vw,46px);font-style:italic;letter-spacing:-.045em;text-shadow:0 4px 0 #0f2737,0 8px 26px #000}
+  #summon-cutin em{display:block;font-style:normal;font-size:13px;font-weight:700;color:#cfe6ef;text-shadow:0 2px 6px #000}
+  #summon-cutin.show{animation:cutin 2.6s both}
+  @keyframes cutin{0%{opacity:0;transform:translateY(14px) scale(.96)}12%,72%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(1)}}
+  @media(max-width:800px){.mission-chip{top:100px;left:18px}.hud-top3d{width:90vw}.runner-card{left:12px;padding:12px}.ability-card{right:12px;padding:12px}.runner-icon{display:none}.ability-card small{display:none}.tap-instruction{font-size:9px}.stamina-track{width:100px}}
 </style>
 </head>
 <body>
@@ -236,10 +275,10 @@
   <!-- ============ TITLE ============ -->
   <section class="screen" id="screen-title">
     <div class="title-stack">
-      <span class="title-warn-tape">⚠ 사내 위험 알림 ⚠</span>
+      <span class="title-warn-tape">⚠ 18:00 퇴근 시도 감지 ⚠</span>
       <h1 class="title-main">팀장님이<br><span>온다</span></h1>
-      <span class="title-tag3d">— 3D FPS 도주 에디션 —</span>
-      <p class="title-sub">진짜로 도망쳐야 한다.<br>WASD로 뛰고, 마우스로 뒤돌아봐라.</p>
+      <span class="title-tag3d">OFFICE ESCAPE / 직급 사다리 생존기</span>
+      <p class="title-sub">신입인 당신에게 있는 건 식은 커피 한 잔뿐.<br>하지만 팀장님 위에는 사장님이 있습니다.</p>
       <button class="btn-start" id="btn-go-select">입사하기 →</button>
       <div class="req-row">
         <span class="req-pill">⌨️ WASD 이동</span>
@@ -258,13 +297,13 @@
       <button class="mode-card" id="card-baby" data-mode="baby">
         <span class="mode-emoji">👶</span>
         <div class="mode-name">5살 팀장님</div>
-        <div class="mode-desc">키 작고 직급은 그대로. 떼쓰며 전속력 추격. 한 명이지만 빠르다.</div>
+        <div class="mode-desc">키는 줄었는데 직급은 그대로. 떼쓰며 전속력으로 쫓아옵니다. 한 명인데 제일 빠릅니다.</div>
         <span class="mode-tag">1대1 · 초고속 추격</span>
       </button>
       <button class="mode-card" id="card-five" data-mode="five">
         <span class="mode-emoji">🧑‍💼</span>
         <div class="mode-name">팀장님 5명</div>
-        <div class="mode-desc">사무실 곳곳에서 동시에 따라붙는다. 회의실로 숨어도 소용없다.</div>
+        <div class="mode-desc">사무실 곳곳에서 동시에 따라붙습니다. 숨을 곳은 없지만, 다섯 명을 한꺼번에 보낼 곳은 있습니다.</div>
         <span class="mode-tag">물량전 · 다방향 포위</span>
       </button>
     </div>
@@ -307,21 +346,20 @@
 
     <div class="tap-instruction" id="tap-instruction">WASD 또는 방향키 이동 · Space 점프 · 클릭하면 마우스로 시점 회전 · Shift 스프린트 · R 시점 리셋</div>
 
-    <div class="debug-panel" id="debug-panel">
-      <div>yaw: <span id="debug-yaw">0</span>°</div>
-      <div>pitch: <span id="debug-pitch">0</span>°</div>
-      <div>keys: <span id="debug-keys">-</span></div>
-      <div>mouseLocked: <span id="debug-locked">false</span></div>
-    </div>
-
+    <div class="mission-chip"><span>OPERATION : 칼퇴</span><strong id="danger-label">오늘의 목표: 끝까지 버티기</strong></div>
+    <div class="runner-card"><span class="runner-icon">↗</span><div><small>신입사원 · 생존 담당</small><strong id="stamina-label">퇴근 체력</strong><div class="stamina-track"><div id="stamina-fill"></div></div></div><b>SHIFT</b></div>
+<div class="coffee-card"><b id="coffee-status">쏟기 준비</b><strong>커피 쏟기</strong><small>좌클릭 / F · 전방 4.8m · 3초 정지</small><div class="coffee-track"><div id="coffee-fill"></div></div></div>
+    <div class="ability-card" id="ability-card"><kbd>Q</kbd><div><strong>사장님 호출</strong><small>바라보는 회의실로 전원 소집</small><div class="ult-track"><div id="ult-fill"></div></div></div><b id="ability-status">25%</b></div>
+    <div id="ability-toast" role="status"></div>
+    <div id="summon-cutin" role="status"><span>사내 전체 방송</span><strong>사장님 긴급 소집</strong><em>전원 회의실로 — 지금 바로</em></div>
     <div class="pointer-hint" id="pointer-hint">
-      <div class="big">클릭해서 시점 잠그기</div>
+      <div class="big">클릭하고, 칼퇴하세요</div>
       <div class="key-row">
         <div class="key">W</div><div class="key">A</div><div class="key">S</div><div class="key">D</div>
         <div class="key" style="width:auto;padding:0 8px;">또는</div>
         <div class="key">↑</div><div class="key">←</div><div class="key">↓</div><div class="key">→</div>
       </div>
-      <div class="small">이동은 지금 바로 키보드로 가능합니다.<br>화면을 클릭하면 마우스로 시점을 둘러볼 수 있어요 (선택사항).<br>Shift를 누르면 잠깐 더 빨리 달립니다. ESC로 마우스 잠금 해제.</div>
+      <div class="small">클릭하면 추격이 시작됩니다. W는 언제나 바라보는 방향!<br>Shift 질주 · Space 점프 · 좌클릭/F 커피 쏟기<br><b style="color:#ffd987">Q 사장님 호출</b> — 게이지가 다 차면, 바라보는 회의실로 팀장님 전원이 불려갑니다.<br>엉뚱한 쪽을 보고 누르면 그쪽으로 다 몰려옵니다. 회의가 끝나면 더 빨라집니다.<br>ESC로 일시정지. 클릭하면 이어서 진행합니다.</div>
     </div>
   </section>
 
@@ -345,6 +383,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
 <script src="character.js"></script>
 <script src="world.js"></script>
+<script src="movement.js"></script>
+<script src="navigation.js"></script>
+<script src="traversal.js"></script>
+<script src="coffee.js"></script>
+<script src="summon.js"></script>
 <script src="game3d.js"></script>
 </body>
 </html>

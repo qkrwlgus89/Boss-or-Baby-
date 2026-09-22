@@ -17,7 +17,7 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
  // In-memory instrumentation only: exercises production functions without adding a debug API.
  await page.route('**/game3d.js',async route=>{
   const response=await route.fetch();let body=await response.text();
-  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rage:b.rage,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rage=0;});},charge:(v)=>{summon.charge=v;},calm:()=>{bosses.forEach(b=>{b.stun=0;b.rage=0;});},time:(ms)=>{elapsedGame=ms;}};})();`);
+  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
   await route.fulfill({response,body});
  });
  async function lock(){await page.locator('#pointer-hint').click();await page.waitForFunction(()=>__qa.snapshot().mouseLocked && __qa.snapshot().elapsedGame>0);}
@@ -121,10 +121,20 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   await page.waitForTimeout(120);await page.screenshot({path:path.join(output,'summon-meeting.png')});
   await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:9000});
   const after=await page.evaluate(()=>__qa.snapshot());
-  assert.ok(after.bosses.every(b=>b.rage>0),'they come back out of the meeting angrier');
+  assert.ok(after.bosses.every(b=>b.rageMult>1),'they come back out of the meeting permanently faster');
   assert.equal(after.summon.doors,0,'the doors open again');
+  assert.equal(after.summon.chief,null,'the 사장님 leaves with the meeting');
   assert.equal(after.summon.uses,1);
-  console.log('PASS 사장님 호출: gauge gate, aimed room, five arrivals inside, no capture, rage on release');
+  // Rage must not tick away, and a second call must compound on top of the first.
+  await page.waitForTimeout(1200);
+  const held=(await page.evaluate(()=>__qa.snapshot())).bosses[0].rageMult;
+  assert.equal(held,after.bosses[0].rageMult,'the speed-up does not expire over time');
+  await page.evaluate(()=>{__qa.charge(1);});
+  await page.keyboard.press('q');await page.waitForFunction(()=>__qa.snapshot().summon.phase!=='idle');
+  await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:12000});
+  const twice=(await page.evaluate(()=>__qa.snapshot())).bosses[0].rageMult;
+  assert.ok(twice>held,'a second call stacks another permanent speed-up');
+  console.log('PASS 사장님 호출: gauge gate, aimed room, five arrivals, no capture, 사장님 at the door, compounding permanent rage');
   await page.keyboard.press('Escape');await page.waitForTimeout(100);const paused=await page.evaluate(()=>__qa.snapshot());await page.waitForTimeout(450);assert.equal((await page.evaluate(()=>__qa.snapshot())).elapsedGame,paused.elapsedGame);
   await page.waitForTimeout(1000);await lock();
   // Wall-side ability and capture regression: solid glass blocks both.
@@ -144,14 +154,29 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   await lock();await page.evaluate(()=>__qa.time(49990));await page.locator('#screen-result.active').waitFor();assert.match(await page.locator('#result-title').textContent(),/탈출/);
   await page.locator('#btn-result-mode').click();await page.locator('#card-baby').click();await page.locator('#btn-cust-go').click();await lock();
   assert.equal((await page.evaluate(()=>__qa.snapshot())).bosses.length,1);
-  // Same ultimate, same sequence, with one toddler instead of five adults.
-  await page.evaluate(()=>{__qa.place(0,-24);__qa.aim(0);__qa.boss(0,0,-30);__qa.ready();});
+  // Toddler mode runs its own ultimate: no meeting room, the 사장님 gets chased instead.
+  await page.evaluate(()=>{__qa.place(0,-24);__qa.aim(0);__qa.boss(0,0,-28);__qa.ready();});
   await page.keyboard.press('q');await page.waitForFunction(()=>__qa.snapshot().summon.phase!=='idle');
-  assert.equal((await page.evaluate(()=>__qa.snapshot())).summon.room,'02 / CONFERENCE','facing down the aisle calls the far room');
-  await page.waitForFunction(()=>{const b=__qa.snapshot().bosses[0];return b.x>2.6 && Math.abs(b.z+36)<5;},{},{timeout:9000});
+  const kid=await page.evaluate(()=>__qa.snapshot());
+  assert.equal(kid.summon.mode,'baby','baby mode never runs the meeting sequence');
+  assert.equal(kid.summon.room,null,'no room is reserved for a five-year-old');
+  assert.ok(kid.summon.chief,'the 사장님 walks out between the toddler and the player');
+  const spawnZ=kid.summon.chief.z;
+  await page.waitForTimeout(400);await page.screenshot({path:path.join(output,'summon-baby.png')});
+  // The toddler must switch targets, and the player must be safe while it happens.
+  assert.ok(!(await page.evaluate(()=>{__qa.boss(0,__qa.snapshot().player.x,__qa.snapshot().player.z-.1);return __qa.step(.001);})<.95),'no capture while the 사장님 is the target');
+  await page.waitForFunction(()=>__qa.snapshot().summon.phase==='tantrum',{},{timeout:6000});
+  const gap=s=>Math.hypot(s.bosses[0].x-s.player.x,s.bosses[0].z-s.player.z);
+  const t0=await page.evaluate(()=>__qa.snapshot());
+  await page.waitForTimeout(1500);
+  const t1=await page.evaluate(()=>__qa.snapshot());
+  assert.ok(Math.abs(t1.summon.chief.z-spawnZ)>2,'the 사장님 actually runs for an exit');
+  assert.ok(gap(t1)>gap(t0)+1,'the toddler abandons the player and follows the 사장님 away');
   await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:9000});
-  assert.ok((await page.evaluate(()=>__qa.snapshot())).bosses[0].rage>0,'the toddler comes back angrier too');
-  console.log('PASS 사장님 호출 in toddler mode: identical sequence, opposite room');
+  const done=await page.evaluate(()=>__qa.snapshot());
+  assert.ok(done.bosses[0].rageMult>1,'the toddler comes back permanently faster too');
+  assert.equal(done.summon.chief,null,'the 사장님 is gone once it is over');
+  console.log('PASS 5살 모드 전용 궁극기: no room, 사장님 spawns and flees, toddler switches target, permanent rage');
   await page.evaluate(()=>{__qa.calm();});
   await page.keyboard.press('Escape');await page.waitForTimeout(100);const t=await page.locator('#timer-label').textContent();await page.waitForTimeout(250);assert.equal(await page.locator('#timer-label').textContent(),t);
   await page.waitForTimeout(1100);await lock();await page.evaluate(()=>__qa.boss(0,0,2.2));await page.locator('#screen-result.active').waitFor({timeout:30000});assert.match(await page.locator('#result-title').textContent(),/붙잡힘/);

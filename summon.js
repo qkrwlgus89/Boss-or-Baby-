@@ -1,16 +1,20 @@
 /* 사장님 호출 — ultimate charge, room targeting and the summon phase machine.
-   One sequence for every mode and every map: no per-mode branches, no extra character.
+   Two sequences, because the joke is different at each end of the ladder:
+     five  — the 팀장님 know exactly who that is, and file into the meeting room.
+     baby  — a five-year-old has never heard of a 사장님, charges him, and he runs.
+   Either way you pay the same interest: they are permanently faster afterwards.
    Pure logic, so the same rules run in the browser and under `node --test`. */
 (function(root){
   'use strict';
   const START=.25, BASE=.05, DANGER=.045, DANGER_RANGE=6;
-  const RAGE=6, RAGE_SPEED=1.35;
+  // Rage no longer expires. Each call compounds and lasts the rest of the round.
+  const RAGE_SPEED=1.35, RAGE_CAP=2.2;
   // Nobody is late to a meeting the 사장님 called, so the walk there is a sprint.
-  const GATHER_SPEED=5.6, ARRIVE_RADIUS=.55;
-  const TIMING={arrive:.8,gather:4.0,meeting:2.6};
-  const ORDER=['arrive','gather','meeting'];
+  const GATHER_SPEED=5.6, CHIEF_SPEED=4.6, ARRIVE_RADIUS=.55;
+  const TIMING={five:{arrive:.8,gather:4.0,meeting:2.6},baby:{arrive:.9,tantrum:5.0}};
+  const ORDER={five:['arrive','gather','meeting'],baby:['arrive','tantrum']};
 
-  function create(){return {charge:START,phase:'idle',t:0,room:null,uses:0};}
+  function create(){return {charge:START,phase:'idle',t:0,mode:'five',room:null,uses:0};}
 
   /* The gauge only fills while idle, and fills faster the closer the danger is. */
   function gain(s,dt,minDist){
@@ -23,8 +27,11 @@
   function ready(s){return s.phase==='idle' && s.charge>=1;}
   function active(s){return s.phase!=='idle';}
 
-  /* The ultimate is aimed: whichever meeting room you face is the one they are
-     called to. Look the wrong way and you summon them straight onto yourself. */
+  /* The cost of borrowing that authority, charged once per call and never refunded. */
+  function rage(current){return Math.min(RAGE_CAP,(current||1)*RAGE_SPEED);}
+
+  /* In five mode the ultimate is aimed: whichever meeting room you face is the one
+     they are called to. Look the wrong way and you summon them onto yourself. */
   function aimRoom(rooms,origin,forward){
     if(!rooms || !rooms.length)return null;
     let best=rooms[0],bestScore=-Infinity;
@@ -36,9 +43,20 @@
     return best;
   }
 
-  function start(s,room){
+  /* The 사장님 runs for whichever end of the floor the toddler is not already near. */
+  function fleeTarget(from,exits){
+    let best=exits[0],bestD=-Infinity;
+    for(const e of exits){
+      const d=Math.hypot(e.x-from.x,e.z-from.z);
+      if(d>bestD){bestD=d;best=e;}
+    }
+    return best;
+  }
+
+  function start(s,mode,room){
     if(!ready(s))return false;
-    s.charge=0;s.phase=ORDER[0];s.t=0;s.room=room||null;s.uses++;
+    const key=ORDER[mode]?mode:'five';
+    s.charge=0;s.mode=key;s.phase=ORDER[key][0];s.t=0;s.room=room||null;s.uses++;
     return true;
   }
 
@@ -46,9 +64,10 @@
   function advance(s,dt,settled){
     if(s.phase==='idle')return null;
     s.t+=dt;
+    const seq=ORDER[s.mode]||ORDER.five,limit=(TIMING[s.mode]||TIMING.five)[s.phase]||0;
     const early=s.phase==='gather' && settled && s.t>.8;
-    if(!early && s.t<(TIMING[s.phase]||0))return null;
-    const next=ORDER[ORDER.indexOf(s.phase)+1]||'idle';
+    if(!early && s.t<limit)return null;
+    const next=seq[seq.indexOf(s.phase)+1]||'idle';
     s.phase=next;s.t=0;
     if(next==='idle')s.room=null;
     return next;
@@ -69,8 +88,9 @@
     });
   }
 
-  const api={create,gain,ready,active,aimRoom,start,advance,assign,
-    START,BASE,DANGER,DANGER_RANGE,RAGE,RAGE_SPEED,GATHER_SPEED,ARRIVE_RADIUS,TIMING,ORDER};
+  const api={create,gain,ready,active,rage,aimRoom,fleeTarget,start,advance,assign,
+    START,BASE,DANGER,DANGER_RANGE,RAGE_SPEED,RAGE_CAP,
+    GATHER_SPEED,CHIEF_SPEED,ARRIVE_RADIUS,TIMING,ORDER};
   root.OfficeSummon=api;
   if(typeof module!=='undefined')module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

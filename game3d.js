@@ -276,7 +276,14 @@
   let jumpQueued = false, abilityQueued = false;
   let summon = OfficeSummon.create();
   let summonDoors = [];   // temporary glass panels that seal the meeting room doorways
+  let chief = null;       // the 사장님: { mesh, target, flee, lastBubbleAt }
   let lastMinDist = Infinity;
+
+  // Built from the existing palette rather than a new character type: bald, suited,
+  // round-faced (which is what puts glasses on him) and holding the report you owe.
+  const CHIEF_LOOK = { identity:'round', skin:'tan', hair:'bald', outfit:'suit', face:'smug', prop:'paper', isBaby:false };
+  const CHIEF_SCALE = 1.12, CHIEF_GOLD = 0xd8ae4a;
+  const FLOOR_EXITS = [{x:0,z:4.6},{x:0,z:-53}];
   let elapsedGame = 0, runPhase = 0;
   let verticalVelocity = 0;
   let isGrounded = true;
@@ -399,7 +406,7 @@
     yaw = 0; pitch = 0;
     keys = {}; motion = FPSMovement.create();
     jumpQueued = abilityQueued = coffeeQueued = false; elapsedGame = runPhase = coffeeCooldown = coffeeAnim = 0;
-    summon = OfficeSummon.create(); clearDoors();
+    summon = OfficeSummon.create(); clearDoors(); despawnChief();
     splashes.forEach(p=>{scene.remove(p.mesh);disposeMesh(p.mesh);});splashes.length=0;
     camera.fov = 78; camera.updateProjectionMatrix();
     verticalVelocity = 0;
@@ -421,7 +428,7 @@
       scene.add(mesh);
       bosses.push({
         mesh, baseSpeed: 3.8, speed:3.8, catchDist: 0.85,
-        lastBubbleAt: 0, dialogue: DIALOGUE3D.baby, stun: 0, rage: 0, spot: null,
+        lastBubbleAt: 0, dialogue: DIALOGUE3D.baby, stun: 0, rageMult: 1, spot: null,
       });
     } else {
       // 십자 교차로(z≈-24)는 폭이 다른 구간이라 피하고, 메인 복도 + 오픈 큐비클존 입구 쪽에 분산
@@ -433,7 +440,7 @@
         scene.add(mesh);
         bosses.push({
           mesh, baseSpeed: 2.6 + Math.random()*0.4, speed:2.6, catchDist: 0.85,
-          lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0, rage: 0, spot: null,
+          lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0, rageMult: 1, spot: null,
         });
       });
     }
@@ -577,16 +584,23 @@
   const SUMMON_LINES = {
     obey: ['아 사장님이 부르신다', '저 지금 회의 들어갑니다', '이거 제가 하려던 거였어요',
            '네 바로 가겠습니다', '아 그건 제가 챙기고 있었습니다', '잠깐만요, 이따 봬요'],
-    baby: ['사장님이 뭔데!!', '나도 회의 갈래!!', '나 아직 안 놀았는데!!'],
+    // A five-year-old has no idea who that is, which is the entire point of baby mode.
+    baby: ['사장님이 뭔데!!', '누구야 저 아저씨!!', '안경 내놔!!', '저거 내 거야!!'],
     seated: ['이게 왜 제 탓이죠', '그건 제 R&R이 아닌데요', '지금 화면 공유 되나요',
              '다음 안건으로 넘어가시죠', '아 네 네 네'],
     rage: ['회의 두 시간 했다', '누가 사장님 불렀어', '야근 확정이야',
            '이제 진짜 안 놔줘', '내 저녁 돌려놔'],
+    babyRage: ['아저씨 도망갔어!!', '재밌다!! 또 해줘!!', '이제 안 놔줄 거야!!'],
+    chiefFive: ['다들 잠깐 회의실로 오시죠', '주간 보고, 지금 바로 하죠', '김 팀장, 그 건은요?'],
+    chiefBaby: ['어어 왜 이래 이거', '누구 앤가 이거!', '나 사장인데?! 나 사장이라고!!'],
   };
 
+  const isBabyMode = ()=> state.mode === 'baby';
+  function pickLine(pool){ const l = SUMMON_LINES[pool]; return l[Math.floor(Math.random()*l.length)]; }
   function summonLine(boss, pool){
-    const lines = (pool === 'obey' && boss.mesh.userData.isBaby) ? SUMMON_LINES.baby : SUMMON_LINES[pool];
-    return lines[Math.floor(Math.random()*lines.length)];
+    if (pool === 'obey' && boss.mesh.userData.isBaby) return pickLine('baby');
+    if (pool === 'rage' && boss.mesh.userData.isBaby) return pickLine('babyRage');
+    return pickLine(pool);
   }
 
   function showCutIn(kicker, headline, detail){
@@ -595,6 +609,53 @@
     el.querySelector('strong').textContent = headline;
     el.querySelector('em').textContent = detail;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
+  /* ---- the 사장님 himself ---- */
+  function spawnChief(x, z, faceX, faceZ, flee){
+    despawnChief();
+    const mesh = buildBossMesh(CHIEF_LOOK, THREE);
+    mesh.scale.multiplyScalar(CHIEF_SCALE);
+    // Recolour this instance's accent material only. Every build makes its own materials,
+    // so the gold tie never leaks onto the 팀장님 standing next to him.
+    mesh.userData.tie.traverse(o=>{ if (o.material) o.material.color.setHex(CHIEF_GOLD); });
+    mesh.position.set(x, 0, z);
+    mesh.rotation.y = Math.atan2(faceX - x, faceZ - z);
+    scene.add(mesh);
+    chief = { mesh, dialogue: [], target: null, flee: !!flee, lastBubbleAt: 0 };
+    return chief;
+  }
+  function despawnChief(){
+    if (!chief) return;
+    scene.remove(chief.mesh); disposeMesh(chief.mesh); chief = null;
+  }
+
+  function updateChief(dt, elapsedSec){
+    if (!chief) return;
+    let moved = 0;
+    if (chief.flee && chief.target && summon.phase === 'tantrum'){
+      // He is not a pathfinder, he is a man running down a corridor. The main aisle is
+      // clear, so steer straight and let collision resolution handle the furniture.
+      const dx = chief.target.x - chief.mesh.position.x, dz = chief.target.z - chief.mesh.position.z;
+      const len = Math.hypot(dx, dz);
+      if (len > .4){
+        const step = OfficeSummon.CHIEF_SPEED * dt;
+        const before = { x: chief.mesh.position.x, z: chief.mesh.position.z };
+        const resolved = resolveCollision(before.x + dx/len*step, before.z + dz/len*step, .4);
+        chief.mesh.position.x = resolved.x; chief.mesh.position.z = resolved.z;
+        moved = Math.hypot(resolved.x - before.x, resolved.z - before.z) / Math.max(dt, .001);
+        const angle = Math.atan2(dx/len, dz/len) - chief.mesh.rotation.y;
+        chief.mesh.rotation.y += Math.atan2(Math.sin(angle), Math.cos(angle)) * (1-Math.exp(-10*dt));
+      }
+    }
+    animateBossMesh(chief.mesh, elapsedSec, moved, false);
+    chief.mesh.position.y = 0;
+
+    const now = performance.now();
+    if (now - chief.lastBubbleAt > 2400 + Math.random()*1200){
+      chief.lastBubbleAt = now;
+      spawnSpeechBubble(chief, pickLine(isBabyMode() ? 'chiefBaby' : 'chiefFive'));
+    }
   }
 
   function sealDoors(room){
@@ -615,9 +676,30 @@
   }
 
   function startSummon(){
+    const baby = isBabyMode();
     const forward = camera.getWorldDirection(new THREE.Vector3());
-    const room = OfficeSummon.aimRoom(WORLD.meetingRooms, playerRig, {x:forward.x, z:forward.z});
-    if (!OfficeSummon.start(summon, room)) return;
+    const room = baby ? null : OfficeSummon.aimRoom(WORLD.meetingRooms, playerRig, {x:forward.x, z:forward.z});
+    if (!OfficeSummon.start(summon, baby ? 'baby' : 'five', room)) return;
+
+    bosses.forEach(b=>{ b.stun = 0; b.lastBubbleAt = 0; });
+
+    if (baby){
+      // He walks out between the toddler and you, which is exactly the wrong place to stand.
+      const kid = bosses[0];
+      const kx = kid ? kid.mesh.position.x : playerRig.x, kz = kid ? kid.mesh.position.z : playerRig.z;
+      const dx = playerRig.x - kx, dz = playerRig.z - kz, len = Math.hypot(dx,dz) || 1;
+      // Between the two of you, but never so close that he fills the screen. If the
+      // toddler is already on top of you he simply appears beside it.
+      const out = Math.min(2.8, Math.max(0, len - 3));
+      const spot = resolveCollision(kx + dx/len*out, kz + dz/len*out, .4);
+      spawnChief(spot.x, spot.z, kx, kz, true);
+      // He runs for whichever end of the floor is furthest from YOU, not from him, so the
+      // chase he drags along goes away from the player instead of straight back over them.
+      chief.target = OfficeSummon.fleeTarget(playerRig, FLOOR_EXITS);
+      bosses.forEach(b=>{ b.spot = null; spawnSpeechBubble(b, summonLine(b,'obey')); });
+      showCutIn('사내 전체 방송', '사장님 등장', '…5살 팀장님은 사장님이 누군지 모릅니다');
+      return;
+    }
 
     // Nearest free standing spot each, so five people do not pile onto one chair.
     const usable = room ? room.spots.filter(s=> navigation.clear(s,s)) : [];
@@ -626,16 +708,18 @@
     // Half speak now and half once seated, so five bubbles never stack on one frame.
     bosses.forEach((b,i)=>{
       b.spot = picked[i] || (room ? room.muster : null);
-      b.stun = 0;
-      b.lastBubbleAt = 0;
       if (i % 2 === 0) spawnSpeechBubble(b, summonLine(b, 'obey'));
     });
+    if (room) spawnChief(room.host.x, room.host.z, room.x, room.z, false);
 
     showCutIn('사내 전체 방송', '사장님 긴급 소집',
       room ? `전원 ${room.name}로 — 지금 바로` : '전원 회의실로 — 지금 바로');
   }
 
   function enterSummonPhase(phase, room){
+    if (phase === 'tantrum'){
+      showCutIn('예상 밖', '사장님 도주', '둘이 붙어 있는 동안 최대한 멀리 가세요');
+    }
     if (phase === 'meeting'){
       sealDoors(room);
       bosses.forEach((b,i)=>{ if (i % 2 === 1 || bosses.length === 1) spawnSpeechBubble(b, summonLine(b,'seated')); });
@@ -643,20 +727,28 @@
     }
     if (phase === 'idle'){
       clearDoors();
-      // The cost of borrowing that authority: they come back out angrier and faster.
-      bosses.forEach(b=>{ b.rage = OfficeSummon.RAGE; b.spot = null; spawnSpeechBubble(b, summonLine(b,'rage')); });
-      showCutIn('회의 종료', '팀장님 복귀', `${OfficeSummon.RAGE.toFixed(0)}초간 더 빨라집니다`);
+      despawnChief();
+      // The interest on borrowed authority: permanently faster, compounding per call.
+      bosses.forEach(b=>{
+        b.rageMult = OfficeSummon.rage(b.rageMult);
+        b.spot = null;
+        spawnSpeechBubble(b, summonLine(b,'rage'));
+      });
+      const pct = Math.round((bosses[0] ? bosses[0].rageMult : 1) * 100);
+      showCutIn(isBabyMode() ? '상황 종료' : '회의 종료', '팀장님 복귀',
+        `이제부터 끝까지 ${pct}% 속도입니다`);
       navigationClock = 0;  // point the shared field back at the player on the next frame
     }
   }
 
-  function updateSummon(dt, minDist){
+  function updateSummon(dt, minDist, elapsedSec){
     OfficeSummon.gain(summon, dt, minDist);
     if (abilityQueued && OfficeSummon.ready(summon)) startSummon();
     abilityQueued = false;
 
     if (OfficeSummon.active(summon)){
       const room = summon.room;
+      updateChief(dt, elapsedSec);
       const settled = bosses.every(b=> !b.spot ||
         Math.hypot(b.mesh.position.x-b.spot.x, b.mesh.position.z-b.spot.z) < OfficeSummon.ARRIVE_RADIUS);
       const entered = OfficeSummon.advance(summon, dt, settled);
@@ -679,7 +771,10 @@
 
     navigationClock-=dt;
     if(navigationClock<=0){
-      if(summoning && room){
+      if(summoning && summon.mode==='baby' && chief){
+        // The toddler has a new favourite target and it is not you.
+        chaseTarget={x:chief.mesh.position.x,z:chief.mesh.position.z};
+      } else if(summoning && room){
         // While the floor is being summoned, the shared field points at the meeting
         // room instead of the player. One search still serves every pursuer.
         chaseTarget=room.muster;
@@ -705,25 +800,31 @@
       const dz = playerRig.z - boss.mesh.position.z;
       const dist = Math.hypot(dx,dz);
       boss.stun = Math.max(0, (boss.stun || 0)-dt);
-      boss.rage = Math.max(0, (boss.rage || 0)-dt);
 
       let goal = chaseTarget || playerRig, curSpeed = 0, frozen = false, faceTarget = null;
 
       if (summoning){
-        // Nobody gets caught while the whole floor is in a meeting. That is the point.
-        const spot = boss.spot || (room ? room.muster : null);
-        goal = spot || goal;
-        const left = spot ? Math.hypot(boss.mesh.position.x-spot.x, boss.mesh.position.z-spot.z) : Infinity;
+        // Nobody gets caught while the ultimate is running. That is the point of it.
         // Standing still here means standing, not the dazed coffee pose: curSpeed stays 0
         // and `frozen` stays false, so they keep a neutral idle instead of splayed arms.
-        if (phase === 'arrive'){
-          // stopped mid-stride by the announcement
-        } else if (left < OfficeSummon.ARRIVE_RADIUS){
-          if (room) faceTarget = room.host;       // in the room, turned to the closed door
+        if (summon.mode === 'baby'){
+          // Chase the 사장님 instead of the player, at the toddler's own speed.
+          goal = chaseTarget || goal;
+          if (phase !== 'arrive') curSpeed = boss.baseSpeed * (boss.rageMult || 1);
+          else if (chief) faceTarget = {x:chief.mesh.position.x, z:chief.mesh.position.z};
         } else {
-          // Latecomers keep hurrying even after the meeting starts, so nobody is left
-          // frozen in the open corridor looking like the game stalled.
-          curSpeed = OfficeSummon.GATHER_SPEED;
+          const spot = boss.spot || (room ? room.muster : null);
+          goal = spot || goal;
+          const left = spot ? Math.hypot(boss.mesh.position.x-spot.x, boss.mesh.position.z-spot.z) : Infinity;
+          if (phase === 'arrive'){
+            // stopped mid-stride by the announcement
+          } else if (left < OfficeSummon.ARRIVE_RADIUS){
+            if (room) faceTarget = room.host;     // in the room, turned to the closed door
+          } else {
+            // Latecomers keep hurrying even after the meeting starts, so nobody is left
+            // frozen in the open corridor looking like the game stalled.
+            curSpeed = OfficeSummon.GATHER_SPEED;
+          }
         }
       } else {
         // speed ramps up slightly over time (pressure increases), but slowly so the
@@ -733,7 +834,7 @@
         const reachClear=onFurniture?!CoffeeAbility.blocked({x:boss.mesh.position.x,y:boss.mesh.userData.headY,z:boss.mesh.position.z},playerRig,WORLD.colliders):navigation.clear(boss.mesh.position,playerRig,0);
         if(!(boss.stun>0) && feet<1.45 && reachClear)minDist=Math.min(minDist,dist-(onFurniture?.55:0));
         frozen = boss.stun > 0;
-        curSpeed = frozen ? 0 : boss.baseSpeed * rampMult * (boss.rage > 0 ? OfficeSummon.RAGE_SPEED : 1);
+        curSpeed = frozen ? 0 : boss.baseSpeed * rampMult * (boss.rageMult || 1);
       }
 
       const oldX=boss.mesh.position.x,oldZ=boss.mesh.position.z;
@@ -770,7 +871,7 @@
       const now = performance.now();
       if (!summoning && dist < 12 && boss.stun === 0 && now - boss.lastBubbleAt > 2200 + Math.random()*1800){
         boss.lastBubbleAt = now;
-        spawnSpeechBubble(boss, boss.rage > 0 ? summonLine(boss,'rage') : undefined);
+        spawnSpeechBubble(boss, (boss.rageMult > 1 && Math.random() < .45) ? summonLine(boss,'rage') : undefined);
       }
     });
 
@@ -784,10 +885,11 @@
     document.getElementById('gauge-fill').style.width = pct + '%';
     document.getElementById('stamina-fill').style.width = (motion.stamina*100)+'%';
     document.getElementById('stamina-label').textContent = motion.exhausted ? '숨 고르는 중' : '퇴근 체력';
-    const raging = bosses.some(b=> b.rage > 0);
+    const mult = bosses.reduce((m,b)=> Math.max(m, b.rageMult || 1), 1);
     document.getElementById('danger-label').textContent =
-      OfficeSummon.active(summon) ? '전원 회의 중 — 지금 도망치세요'
-      : raging ? '회의 끝났습니다. 더 빨라졌어요'
+      OfficeSummon.active(summon)
+        ? (summon.mode === 'baby' ? '사장님이 대신 쫓기는 중 — 지금 도망치세요' : '전원 회의 중 — 지금 도망치세요')
+      : mult > 1 ? `팀장님 속도 ${Math.round(mult*100)}% — 끝까지 이대로입니다`
       : minDist < 3 ? (OfficeSummon.ready(summon) ? '가까워요! Q로 사장님을 부르세요' : '가까워요! 좌클릭으로 커피를 쏟으세요')
       : minDist < 7 ? '팀장님 접근 중'
       : '오늘의 목표: 끝까지 버티기';
@@ -811,6 +913,8 @@
     updateHUD(Infinity, state.mode === 'baby' ? 42 : 50);
     const card = document.getElementById('ability-card');
     card.classList.remove('ready','firing');
+    document.getElementById('ability-sub').textContent = state.mode === 'baby'
+      ? '5살 팀장님은 사장님을 모릅니다' : '바라보는 회의실로 전원 소집';
     document.getElementById('ability-status').textContent = Math.floor(summon.charge*100)+'%';
     document.getElementById('ult-fill').style.width = (summon.charge*100)+'%';
     document.getElementById('summon-cutin').classList.remove('show');
@@ -845,7 +949,7 @@
       // View, movement, ability and pursuit advance together only during active play.
       updatePlayerMovement(dt);
       updateWorldLighting(playerRig.x,playerRig.z);
-      updateSummon(dt, lastMinDist);
+      updateSummon(dt, lastMinDist, elapsedSec);
       updateCoffee(dt);
 
       const minDist = updateBosses(dt, elapsedSec);
@@ -897,18 +1001,19 @@
     tag.style.color = survived ? '#ffd23f' : '#ff3b30';
 
     const calls = summon.uses;
+    const finalMult = bosses.reduce((m,b)=> Math.max(m, b.rageMult || 1), 1);
     if (state.mode === 'baby'){
       if (survived){
         tag.textContent = '생존 성공';
         title.textContent = '칼퇴 달성 🎉';
         desc.textContent = calls
-          ? '사장님 이름 한 번에 5살 팀장님도 회의실로 끌려갔습니다. 직급은 다섯 살한테도 통했다.'
+          ? '5살 팀장님은 사장님이 누군지 몰랐고, 사장님은 그걸 알기 전에 도망쳤습니다. 그 틈에 당신은 나왔습니다.'
           : '사장님 한 번 안 부르고 혼자 힘으로 다섯 살을 따돌렸습니다. 이런 날도 있어야죠.';
       } else {
         tag.textContent = '포획됨';
         title.textContent = '다리 붙잡힘 👶';
         desc.textContent = calls
-          ? '회의 끝나고 나온 5살 팀장님이 더 빨랐습니다. 빌린 권력에는 이자가 붙습니다.'
+          ? '사장님을 쫓다 신이 난 5살 팀장님이 더 빨라져서 돌아왔습니다. 빌린 권력에는 이자가 붙습니다.'
           : '책상 모서리에서 살짝 막힌 틈에 따라잡혔습니다. Q를 아껴서 뭐 하려고요.';
       }
     } else {
@@ -931,6 +1036,7 @@
       <div class="stat-pill"><div class="num">${seconds}s</div><div class="lab">버틴 시간</div></div>
       <div class="stat-pill"><div class="num">${state.mode==='baby'?'1':'5'}</div><div class="lab">상대 인원</div></div>
       <div class="stat-pill"><div class="num">${calls}</div><div class="lab">사장님 호출</div></div>
+      <div class="stat-pill"><div class="num">${Math.round(finalMult*100)}%</div><div class="lab">최종 추격 속도</div></div>
     `;
 
     showScreen('screen-result');

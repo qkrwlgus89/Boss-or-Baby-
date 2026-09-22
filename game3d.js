@@ -667,7 +667,8 @@
     mesh.position.set(x, 0, z);
     mesh.rotation.y = Math.atan2(faceX - x, faceZ - z);
     scene.add(mesh);
-    chief = { mesh, dialogue: [], label: '사장님', target: null, flee: !!flee, lastBubbleAt: 0 };
+    chief = { mesh, dialogue: [], label: '사장님', target: null, flee: !!flee,
+      lastBubbleAt: 0, turn: 1, stuck: 0 };
     return chief;
   }
   function despawnChief(){
@@ -675,23 +676,63 @@
     scene.remove(chief.mesh); disposeMesh(chief.mesh); chief = null;
   }
 
+  /* He is not a pathfinder, he is a panicking man. Rather than plan a route he probes
+     ahead and swings to the first heading that is open, keeping the same turning
+     direction so he wall-follows out of a bay instead of jittering in the corner. */
+  // The probe clearance must stay under the .4 radius he actually moves with. Probing
+  // wider than he is means a spot he can legally stand in reads as blocked from every
+  // heading, and he just grinds into the furniture instead of turning away from it.
+  const CHIEF_PROBE = 1.7, CHIEF_CLEARANCE = .34;
+  function chiefHeading(from, toward){
+    const base = Math.atan2(toward.x, toward.z);
+    const turn = chief.turn || 1;
+    const offsets = [0];
+    for (const step of [.45,.9,1.35,1.9,2.45]) offsets.push(turn*step, -turn*step);
+    offsets.push(Math.PI);
+    // Full stride first; if everything is tight, accept a shorter opening.
+    for (const reach of [CHIEF_PROBE, CHIEF_PROBE*.5]){
+      for (const off of offsets){
+        const a = base + off;
+        const probe = { x: from.x + Math.sin(a)*reach, z: from.z + Math.cos(a)*reach };
+        if (navigation.clear(from, probe, CHIEF_CLEARANCE)){
+          if (off !== 0) chief.turn = off > 0 ? 1 : -1;
+          return { x: Math.sin(a), z: Math.cos(a) };
+        }
+      }
+    }
+    // Wedged inside geometry: let collision resolution point the way back out.
+    const out = resolveCollision(from.x, from.z, .62);
+    const ox = out.x - from.x, oz = out.z - from.z, olen = Math.hypot(ox, oz);
+    if (olen > 1e-4) return { x: ox/olen, z: oz/olen };
+    return { x: Math.sin(base), z: Math.cos(base) };
+  }
+
   function updateChief(dt, elapsedSec){
     if (!chief) return;
     let moved = 0;
     if (chief.flee && chief.target && summon.phase === 'tantrum'){
-      // He is not a pathfinder, he is a man running down a corridor. The main aisle is
-      // clear, so steer straight and let collision resolution handle the furniture.
-      const dx = chief.target.x - chief.mesh.position.x, dz = chief.target.z - chief.mesh.position.z;
-      const len = Math.hypot(dx, dz);
-      if (len > .4){
-        const step = OfficeSummon.CHIEF_SPEED * dt;
-        const before = { x: chief.mesh.position.x, z: chief.mesh.position.z };
-        const resolved = resolveCollision(before.x + dx/len*step, before.z + dz/len*step, .4);
-        chief.mesh.position.x = resolved.x; chief.mesh.position.z = resolved.z;
-        moved = Math.hypot(resolved.x - before.x, resolved.z - before.z) / Math.max(dt, .001);
-        const angle = Math.atan2(dx/len, dz/len) - chief.mesh.rotation.y;
-        chief.mesh.rotation.y += Math.atan2(Math.sin(angle), Math.cos(angle)) * (1-Math.exp(-10*dt));
+      const from = { x: chief.mesh.position.x, z: chief.mesh.position.z };
+      let dx = chief.target.x - from.x, dz = chief.target.z - from.z;
+      let len = Math.hypot(dx, dz);
+      // Made it to one end of the floor? Turn round and run for the other one.
+      if (len < 1.5){
+        chief.target = OfficeSummon.fleeTarget(from, FLOOR_EXITS);
+        dx = chief.target.x - from.x; dz = chief.target.z - from.z; len = Math.hypot(dx, dz) || 1;
       }
+      const dir = chiefHeading(from, { x: dx/len, z: dz/len });
+      const step = OfficeSummon.CHIEF_SPEED * dt;
+      const resolved = resolveCollision(from.x + dir.x*step, from.z + dir.z*step, .4);
+      chief.mesh.position.x = resolved.x; chief.mesh.position.z = resolved.z;
+      moved = Math.hypot(resolved.x - from.x, resolved.z - from.z) / Math.max(dt, .001);
+
+      // Still grinding after a moment: he picked the wrong way round, so try the other.
+      if (moved < OfficeSummon.CHIEF_SPEED * .3){
+        chief.stuck += dt;
+        if (chief.stuck > .35){ chief.turn = -(chief.turn || 1); chief.stuck = 0; }
+      } else chief.stuck = 0;
+
+      const angle = Math.atan2(dir.x, dir.z) - chief.mesh.rotation.y;
+      chief.mesh.rotation.y += Math.atan2(Math.sin(angle), Math.cos(angle)) * (1-Math.exp(-10*dt));
     }
     animateBossMesh(chief.mesh, elapsedSec, moved, false);
     chief.mesh.position.y = 0;

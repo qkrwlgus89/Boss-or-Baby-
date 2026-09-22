@@ -17,7 +17,7 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
  // In-memory instrumentation only: exercises production functions without adding a debug API.
  await page.route('**/game3d.js',async route=>{
   const response=await route.fetch();let body=await response.text();
-  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},say:(i,t)=>spawnSpeechBubble(bosses[i],t),hush:()=>clearChatter(),calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
+  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},chiefAt:(x,z)=>{if(chief)chief.mesh.position.set(x,0,z);},say:(i,t)=>spawnSpeechBubble(bosses[i],t),hush:()=>clearChatter(),calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
   await route.fulfill({response,body});
  });
  async function lock(){await page.locator('#pointer-hint').click();await page.waitForFunction(()=>__qa.snapshot().mouseLocked && __qa.snapshot().elapsedGame>0);}
@@ -197,6 +197,19 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   assert.equal(done.summon.chief,null,'the 사장님 is gone once it is over');
   console.log('PASS 5살 모드 전용 궁극기: no room, 사장님 spawns and flees, toddler switches target, permanent rage');
   await page.evaluate(()=>{__qa.calm();});
+  // Wedged between two workstations: he must steer out, not grind against the desk.
+  await page.evaluate(()=>{__qa.place(0,-24);__qa.aim(0);__qa.boss(0,-6.5,-20);__qa.ready();});
+  await page.keyboard.press('q');
+  await page.waitForFunction(()=>__qa.snapshot().summon.phase==='tantrum',{},{timeout:6000});
+  await page.evaluate(()=>__qa.chiefAt(-8.8,-20));
+  const penned=(await page.evaluate(()=>__qa.snapshot())).summon.chief;
+  await page.waitForTimeout(1800);
+  const freed=(await page.evaluate(()=>__qa.snapshot())).summon.chief;
+  assert.ok(freed,'the 사장님 is still on his feet');
+  assert.ok(Math.hypot(freed.x-penned.x,freed.z-penned.z)>2.5,'he steers around furniture instead of stopping in it');
+  await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:9000});
+  await page.evaluate(()=>{__qa.calm();});
+  console.log('PASS 사장님 도주: turns away from blocked headings and keeps moving');
   await page.keyboard.press('Escape');await page.waitForTimeout(100);const t=await page.locator('#timer-label').textContent();await page.waitForTimeout(250);assert.equal(await page.locator('#timer-label').textContent(),t);
   await page.waitForTimeout(1100);await lock();await page.evaluate(()=>__qa.boss(0,0,2.2));await page.locator('#screen-result.active').waitFor({timeout:30000});assert.match(await page.locator('#result-title').textContent(),/붙잡힘/);
   await page.locator('#btn-result-retry').click();await lock();await page.evaluate(()=>__qa.time(41990));await page.locator('#screen-result.active').waitFor();assert.match(await page.locator('#result-title').textContent(),/칼퇴/);

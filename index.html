@@ -101,6 +101,7 @@
   }
   #card-baby{ --mode-color:#ff9f1c; }
   #card-five{ --mode-color:#ff3b30; }
+  #card-endless{ --mode-color:#6de4cd; }
 
   /* ===== CUSTOMIZE ===== */
   #screen-customize{ padding:0; align-items:stretch; justify-content:stretch; }
@@ -241,9 +242,20 @@
   .runner-card,.ability-card{position:absolute;bottom:58px;z-index:300;display:flex;align-items:center;gap:14px;padding:16px 20px;background:#132c40ed;border:1px solid #648d9c66;border-radius:6px;box-shadow:0 8px 24px #0003;pointer-events:none}
   .runner-card{left:28px;border-left:4px solid #6de4cd}.ability-card{right:28px;border-bottom:3px solid #ffac82}.runner-icon{font-size:32px;color:#6de4cd}.runner-card strong,.ability-card strong{display:block;font-size:16px}.runner-card small,.ability-card small{display:block;color:#a8c0cf;font-size:10px;margin:4px 0}.runner-card b,.ability-card b{font-size:11px;color:#8ee8d6}.stamina-track{height:5px;background:#446072;width:150px;margin-top:9px}#stamina-fill{height:100%;background:#6de4cd;width:100%}
   .coffee-card{position:absolute;right:28px;bottom:166px;z-index:300;width:273px;background:#173648ed;border:1px solid #638d9c;border-left:4px solid #d8a76e;padding:14px 18px;border-radius:6px;pointer-events:none}.coffee-card strong{font-size:16px}.coffee-card small{display:block;font-size:11px;color:#b6d1d5;margin:5px 0}.coffee-card b{float:right;color:#ffc98d;font-size:12px}.coffee-track{height:4px;background:#465b62;margin-top:9px}#coffee-fill{height:100%;background:#e7bc87;width:100%}
+  #game-sound{position:absolute;right:22px;top:22px;z-index:380;padding:9px 12px;border:1px solid #b7cbd055;background:#142733cc;color:#edf4f2;font-size:11px;font-weight:700;letter-spacing:.06em;backdrop-filter:blur(8px)}#game-sound:hover{border-color:#ffd49b;color:#ffd49b}
   kbd{display:grid;place-items:center;font:900 22px inherit;background:#f2f5e9;color:#20394a;width:40px;height:42px;border-radius:4px;box-shadow:0 4px 0 #84989c}
   .pointer-hint{background:#102a3dbb;backdrop-filter:blur(5px)}.pointer-hint .big{font-size:34px;font-style:italic}.pointer-hint .small{max-width:460px;color:#cadbe5;line-height:1.9}.tap-instruction{font-size:11px;bottom:22px;color:#d4e6ef;text-shadow:0 2px 6px #000}
   #ability-toast{position:absolute;top:25%;z-index:350;padding:12px 24px;background:#16334be8;border-bottom:2px solid #6de4cd;border-radius:4px;opacity:0;pointer-events:none;font-weight:700;font-size:14px}#ability-toast.show{animation:toast 3s both}@keyframes toast{0%,100%{opacity:0;transform:translateY(8px)}10%,85%{opacity:1;transform:translateY(0)}}
+  /* 야근 모드 rank plaque. Sits under the mission chip and replaces the countdown's job:
+     what matters is how high you climbed, not how many seconds are left. */
+  .rank-chip{position:absolute;left:28px;top:96px;z-index:300;pointer-events:none;
+    padding:12px 18px;background:#132c40ed;border:1px solid #648d9c66;border-left:4px solid #6de4cd;border-radius:6px}
+  .rank-chip[hidden]{display:none}
+  .rank-chip span{display:block;font-size:10px;letter-spacing:.17em;color:#8bf0d8}
+  .rank-chip strong{display:block;font-size:26px;line-height:1.15;margin-top:3px;text-shadow:0 2px 6px #000}
+  .rank-chip em{display:block;font-style:normal;font-size:13px;font-weight:800;color:#ffd987;font-variant-numeric:tabular-nums}
+  .rank-chip.promoted{animation:rank-up .7s ease-out}
+  @keyframes rank-up{0%{transform:scale(1)}25%{transform:scale(1.12);border-left-color:#ffd987}100%{transform:scale(1)}}
   /* Chatter. A line spoken by someone you can see floats over their head; a line from
      behind you drops into the subtitle rail instead, so running away never costs the joke. */
   .speech-bubble-3d{
@@ -283,9 +295,10 @@
   #summon-cutin em{display:block;font-style:normal;font-size:13px;font-weight:700;color:#cfe6ef;text-shadow:0 2px 6px #000}
   #summon-cutin.show{animation:cutin 2.6s both}
   @keyframes cutin{0%{opacity:0;transform:translateY(14px) scale(.96)}12%,72%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(1)}}
-  @media(max-width:800px){.mission-chip{top:100px;left:18px}.hud-top3d{width:90vw}.runner-card{left:12px;padding:12px}.ability-card{right:12px;padding:12px}.runner-icon{display:none}.ability-card small{display:none}.tap-instruction{font-size:9px}.stamina-track{width:100px}
+  @media(max-width:800px){.mission-chip{top:100px;left:18px}.rank-chip{left:18px;top:160px;padding:9px 13px}.rank-chip strong{font-size:20px}.hud-top3d{width:90vw}.runner-card{left:12px;padding:12px}.ability-card{right:12px;padding:12px}.runner-icon{display:none}.ability-card small{display:none}.tap-instruction{font-size:9px}.stamina-track{width:100px}
     #chatter-rail{width:88vw;bottom:210px;gap:5px}.chatter{font-size:14px;padding:7px 12px}.speech-bubble-3d{font-size:12.5px;max-width:170px}}
 </style>
+<link rel="stylesheet" href="intro.css">
 </head>
 <body>
 
@@ -297,26 +310,32 @@
 <div id="app">
 
   <!-- ============ TITLE ============ -->
-  <section class="screen" id="screen-title">
-    <div class="title-stack">
-      <span class="title-warn-tape">⚠ 18:00 퇴근 시도 감지 ⚠</span>
-      <h1 class="title-main">팀장님이<br><span>온다</span></h1>
-      <span class="title-tag3d">OFFICE ESCAPE / 직급 사다리 생존기</span>
-      <p class="title-sub">신입인 당신에게 있는 건 식은 커피 한 잔뿐.<br>하지만 팀장님 위에는 사장님이 있습니다.</p>
-      <button class="btn-start" id="btn-go-select">입사하기 →</button>
-      <div class="req-row">
-        <span class="req-pill">⌨️ WASD 이동</span>
-        <span class="req-pill">🖱️ 마우스 시점</span>
-        <span class="req-pill">PC 권장</span>
+  <section class="screen intro" id="screen-title" aria-label="1인칭 프롤로그" data-chapter="0">
+    <div class="intro-canvas" id="intro-canvas" aria-label="이야기 시점 조작"></div>
+    <div class="intro-vignette"></div>
+    <div class="intro-menu" id="intro-menu">
+      <div class="menu-brand">HANMAEUM COMPANY <span>AFTER HOURS</span></div>
+      <div class="menu-title"><p>퇴근하지 못한 하루가, 꿈에서 다시 시작된다.</p><h1>팀장님이<br><em>온다</em><span class="menu-title-dot">.</span></h1><div class="menu-en">BOSS OR BABY</div>
+        <form class="menu-entry" id="intro-entry" autocomplete="off">
+          <label for="intro-player-name">합격자 이름</label>
+          <div class="menu-name-row"><input id="intro-player-name" name="playerName" type="text" maxlength="12" placeholder="이름을 입력하세요" aria-describedby="intro-name-help" autocomplete="name"><button id="intro-begin" type="submit" disabled>시작하기 <span>↗</span></button></div>
+          <small id="intro-name-help">입력한 이름은 합격 메일과 사원증에 표시됩니다.</small>
+        </form>
       </div>
-      <div class="title-foot">클릭 시 마우스가 화면에 잠깁니다 (ESC로 해제)</div>
+      <div class="menu-footer"><span>WASD 이동 &nbsp; / &nbsp; 마우스 시점 &nbsp; / &nbsp; E 상호작용</span><span>PC · 키보드와 마우스로 플레이</span></div>
     </div>
+    <header class="intro-top"><div><div id="intro-kicker"></div><p id="intro-objective"></p></div><div class="intro-top-actions"><button id="intro-sound" aria-pressed="false">소리 켜기</button><button id="intro-skip">이야기 건너뛰기</button></div></header>
+    <div class="intro-crosshair" aria-hidden="true"></div>
+    <div class="intro-action"><span id="intro-interaction">E</span><button id="btn-go-select"><span id="intro-next-label">메일 확인하기</span></button></div>
+    <div class="intro-subtitles" aria-live="polite" aria-atomic="true"><span id="intro-speaker"></span><p id="intro-dialogue"></p></div>
+    <footer class="intro-controls"><span id="intro-movement">마우스 · 둘러보기</span><span id="intro-look">화면 클릭 · 시점 조작 / 드래그로 둘러보기</span><span>E · 상호작용 &nbsp; / &nbsp; R · 자세히 보기</span></footer>
+    <div class="intro-curtain"></div>
   </section>
 
   <!-- ============ MODE SELECT ============ -->
   <section class="screen" id="screen-select">
-    <div class="eyebrow">모드 선택</div>
-    <div class="select-title">오늘은 어떤 지옥?</div>
+    <div class="eyebrow">악몽의 시작</div>
+    <div class="select-title">오늘 밤, 어떤 꿈을 꿀까요?</div>
     <div class="cards">
       <button class="mode-card" id="card-baby" data-mode="baby">
         <span class="mode-emoji">👶</span>
@@ -330,7 +349,14 @@
         <div class="mode-desc">사무실 곳곳에서 동시에 따라붙습니다. 숨을 곳은 없지만, 다섯 명을 한꺼번에 보낼 곳은 있습니다.</div>
         <span class="mode-tag">물량전 · 다방향 포위</span>
       </button>
+      <button class="mode-card" id="card-endless" data-mode="endless">
+        <span class="mode-emoji">🌙</span>
+        <div class="mode-name">야근 모드</div>
+        <div class="mode-desc">시간 제한이 없습니다. 사장님을 부를 때마다 승진하고, 승진할 때마다 쫓는 사람이 늘어납니다. 어디까지 올라갈 수 있습니까.</div>
+        <span class="mode-tag">무한 · 승진 랭킹</span>
+      </button>
     </div>
+    <button class="intro-replay" id="intro-replay">프롤로그 다시 보기</button>
   </section>
 
   <!-- ============ CUSTOMIZE ============ -->
@@ -356,6 +382,7 @@
   <!-- ============ GAME (3D) ============ -->
   <section class="screen" id="screen-game">
     <div id="game-canvas-wrap"></div>
+    <button id="game-sound" type="button" aria-pressed="true">소리 켜짐 · M</button>
     <div class="vignette3d"></div>
     <div class="crosshair"></div>
     <div class="flash-red" id="flash-red"></div>
@@ -371,7 +398,8 @@
     <div class="tap-instruction" id="tap-instruction">WASD 또는 방향키 이동 · Space 점프 · 클릭하면 마우스로 시점 회전 · Shift 스프린트 · R 시점 리셋</div>
 
     <div class="mission-chip"><span>OPERATION : 칼퇴</span><strong id="danger-label">오늘의 목표: 끝까지 버티기</strong></div>
-    <div class="runner-card"><span class="runner-icon">↗</span><div><small>신입사원 · 생존 담당</small><strong id="stamina-label">퇴근 체력</strong><div class="stamina-track"><div id="stamina-fill"></div></div></div><b>SHIFT</b></div>
+    <div class="rank-chip" id="rank-chip" hidden><span>현재 직급</span><strong id="rank-title">사원</strong><em id="rank-score">0</em></div>
+    <div class="runner-card"><span class="runner-icon">↗</span><div><small><span id="runner-name">신입사원</span> · 생존 담당</small><strong id="stamina-label">퇴근 체력</strong><div class="stamina-track"><div id="stamina-fill"></div></div></div><b>SHIFT</b></div>
 <div class="coffee-card"><b id="coffee-status">쏟기 준비</b><strong>커피 쏟기</strong><small>좌클릭 / F · 전방 4.8m · 3초 정지</small><div class="coffee-track"><div id="coffee-fill"></div></div></div>
     <div class="ability-card" id="ability-card"><kbd>Q</kbd><div><strong>사장님 호출</strong><small id="ability-sub">바라보는 회의실로 전원 소집</small><div class="ult-track"><div id="ult-fill"></div></div></div><b id="ability-status">25%</b></div>
     <div id="ability-toast" role="status"></div>
@@ -413,6 +441,10 @@
 <script src="traversal.js"></script>
 <script src="coffee.js"></script>
 <script src="summon.js"></script>
+<script src="rank.js"></script>
+<script src="game-audio.js"></script>
+<script src="intro-art.js"></script>
+<script src="intro.js"></script>
 <script src="game3d.js"></script>
 </body>
 </html>

@@ -34,11 +34,13 @@
     setTimeout(()=>{
       document.getElementById('loading-screen').classList.add('hidden');
       showScreen('screen-title');
+      OfficeIntro.start(()=>{showScreen('screen-select');document.getElementById('card-baby').focus({preventScroll:true});},true);
     }, 250);
   });
 
-  document.getElementById('btn-go-select').addEventListener('click', ()=>{
-    showScreen('screen-select');
+  document.getElementById('intro-replay').addEventListener('click', ()=>{
+    showScreen('screen-title');
+    OfficeIntro.start(()=>{showScreen('screen-select');document.getElementById('card-baby').focus({preventScroll:true});});
   });
 
   document.querySelectorAll('.mode-card').forEach(card=>{
@@ -48,6 +50,7 @@
       if (mode === 'baby'){
         state.babyAvatar = randomAvatarOpts3D(true);
       } else {
+        // 야근 모드 keeps growing past five, so spawns beyond the roster reuse it in order.
         state.fiveAvatars = Array.from({length:5}, (_,i)=> randomAvatarOpts3D(false,i));
         state.activeBossTab = 0;
       }
@@ -188,7 +191,7 @@
       title.textContent = '떼쓰는 팀장님 완성';
       multiTabs.style.display = 'none';
     } else {
-      eyebrow.textContent = '5명의 팀장님 빚어내기';
+      eyebrow.textContent = state.mode === 'endless' ? '야근 조 빚어내기' : '5명의 팀장님 빚어내기';
       title.textContent = `${state.activeBossTab+1}번째 팀장님 편집중`;
       multiTabs.style.display = 'flex';
       multiTabs.innerHTML = state.fiveAvatars.map((_,i)=>
@@ -284,11 +287,17 @@
   const CHIEF_LOOK = { identity:'round', skin:'tan', hair:'bald', outfit:'suit', face:'smug', prop:'paper', isBaby:false };
   const CHIEF_SCALE = 1.12, CHIEF_GOLD = 0xd8ae4a;
   const FLOOR_EXITS = [{x:0,z:4.6},{x:0,z:-53}];
+
+  // 야근 모드 state. Reinforcements arrive at whichever of these is furthest from the player.
+  let rank = OfficeRank.create();
+  const isEndless = ()=> state.mode === 'endless';
+  const REINFORCE_POINTS = [{x:0,z:2},{x:0,z:-52},{x:-6.5,z:-46},{x:6.5,z:-50},{x:-6.5,z:-7},{x:8.6,z:-24}];
   let elapsedGame = 0, runPhase = 0;
   let verticalVelocity = 0;
   let isGrounded = true;
   let coffeeQueued=false,coffeeCooldown=0,coffeeAnim=0;
   const splashes=[];
+  let abilityWasReady=false,lastAudiblePace=1;
 
   let navigation=null, navigationClock=0, chaseTarget=null;
   function initThree(){
@@ -340,6 +349,7 @@
 
   document.addEventListener('pointerlockchange', ()=>{
     mouseLocked = document.pointerLockElement === canvasWrapEl();
+    if(gameActive)OfficeAudio.setPaused(!mouseLocked);
     keys = {}; motion.right = motion.forward = 0;
     jumpQueued = abilityQueued = coffeeQueued = false;
     document.getElementById('pointer-hint').classList.toggle('hidden', mouseLocked);
@@ -370,6 +380,7 @@
       if (e.code === 'Space') jumpQueued = true;
       if (e.code === 'KeyQ') abilityQueued = true;
       if (e.code === 'KeyF') coffeeQueued = true;
+      if (e.code === 'KeyM') updateGameSoundButton(OfficeAudio.toggle());
     }
     if (e.code === 'Escape' && gameActive && document.pointerLockElement) document.exitPointerLock();
     keys[e.code] = true;
@@ -381,6 +392,10 @@
       yaw = 0; pitch = 0;
     }
   }, { passive:false });
+  function updateGameSoundButton(muted=OfficeAudio.isMuted()){
+    const button=document.getElementById('game-sound');button.textContent=muted?'소리 꺼짐 · M':'소리 켜짐 · M';button.setAttribute('aria-pressed',String(!muted));
+  }
+  document.getElementById('game-sound').addEventListener('click',e=>{e.stopPropagation();updateGameSoundButton(OfficeAudio.toggle());if(gameActive&&!OfficeAudio.isMuted())OfficeAudio.resume();});
   window.addEventListener('keyup', (e)=>{
     keys[e.code] = false;
     if (gameActive && MOVE_KEYS.has(e.code)) e.preventDefault();
@@ -434,16 +449,36 @@
       // 십자 교차로(z≈-24)는 폭이 다른 구간이라 피하고, 메인 복도 + 오픈 큐비클존 입구 쪽에 분산
       const startZ = [-10, -18, -28, -38, -50];
       const startX = [-.8, .8, -.7, .7, 0];
-      state.fiveAvatars.forEach((opts,i)=>{
-        const mesh = buildBossMesh(opts, THREE);
-        mesh.position.set(startX[i], 0, startZ[i]);
-        scene.add(mesh);
-        bosses.push({
-          mesh, baseSpeed: 2.6 + Math.random()*0.4, speed:2.6, catchDist: 0.85,
-          lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0, rageMult: 1, spot: null, label: `팀장님 ${i+1}`,
-        });
-      });
+      // 야근 모드 opens with a smaller crew and grows one per promotion.
+      const count = isEndless() ? OfficeRank.chasers(0) : state.fiveAvatars.length;
+      for (let i=0; i<count; i++) addChaser(startX[i % 5], startZ[i % 5]);
     }
+  }
+
+  function addChaser(x, z){
+    const i = bosses.length;
+    const opts = state.fiveAvatars[i % state.fiveAvatars.length];
+    const mesh = buildBossMesh(opts, THREE);
+    mesh.position.set(x, 0, z);
+    scene.add(mesh);
+    bosses.push({
+      mesh, baseSpeed: 2.6 + Math.random()*0.4, speed:2.6, catchDist: 0.85,
+      lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0,
+      rageMult: bosses.length ? bosses[0].rageMult : 1,   // latecomers match the current pace
+      spot: null, label: `팀장님 ${i+1}`,
+    });
+    return bosses[bosses.length-1];
+  }
+
+  /* A promotion puts one more body on the floor, as far from you as the map allows. */
+  function reinforce(){
+    let best = REINFORCE_POINTS[0], bestD = -Infinity;
+    for (const p of REINFORCE_POINTS){
+      if (!navigation.clear(p, p)) continue;
+      const d = Math.hypot(p.x-playerRig.x, p.z-playerRig.z);
+      if (d > bestD){ bestD = d; best = p; }
+    }
+    return addChaser(best.x, best.z);
   }
 
   const DIALOGUE3D = {
@@ -498,6 +533,7 @@
       const pool = fresh.length ? fresh : speaker.dialogue;
       text = pool[Math.floor(Math.random()*pool.length)];
     }
+    OfficeAudio.event('message');
     const head = headPoint(speaker.mesh);
     const ndc = head.clone().project(camera);
     // A little inside the edges, so a speaker half off screen reads as off screen.
@@ -562,13 +598,15 @@
       forward: Number(!!(keys.KeyW || keys.ArrowUp))-Number(!!(keys.KeyS || keys.ArrowDown)),
       sprint: keys.ShiftLeft || keys.ShiftRight,
     };
-    const delta = FPSMovement.step(motion, input, yaw, dt);
+    const delta = FPSMovement.step(motion, input, yaw, dt),wasGrounded=isGrounded,launched=jumpQueued&&isGrounded;
     const body={...playerRig,velocity:verticalVelocity,grounded:isGrounded};
     OfficeTraversal.step(body,delta,jumpQueued,dt,WORLD.colliders,resolveCollision);
     playerRig.x=body.x;playerRig.y=body.y;playerRig.z=body.z;
     verticalVelocity=body.velocity;isGrounded=body.grounded;jumpQueued=false;
+    if(launched)OfficeAudio.event('jump');else if(!wasGrounded&&isGrounded)OfficeAudio.event('land');
     // Keep the horizon level; only a subtle vertical footfall and sprint lens change.
     const speed = Math.hypot(motion.right,motion.forward);
+    OfficeAudio.movement(speed,motion.sprinting,isGrounded,dt,lastMinDist);
     runPhase += speed*dt*1.8;
     const bob = isGrounded ? Math.sin(runPhase*2)*0.012*Math.min(1,speed/5.6) : 0;
     camera.position.set(playerRig.x, playerRig.y+bob, playerRig.z);
@@ -602,11 +640,13 @@
     coffeeCooldown=Math.max(0,coffeeCooldown-dt);coffeeAnim=Math.max(0,coffeeAnim-dt);
     if(coffeeQueued && coffeeCooldown===0){
       coffeeCooldown=CoffeeAbility.COOLDOWN;coffeeAnim=.55;
+      OfficeAudio.event('coffee');
       const forward=camera.getWorldDirection(new THREE.Vector3());
       const origin={x:playerRig.x,y:playerRig.y-.18,z:playerRig.z};
       const candidates=bosses.map(b=>({x:b.mesh.position.x,y:b.mesh.userData.headY*.65,z:b.mesh.position.z,boss:b}));
       const hits=CoffeeAbility.targets(origin,forward,candidates,WORLD.colliders);
       hits.forEach(({boss:b})=>{b.stun=Math.max(b.stun||0,CoffeeAbility.STUN);spawnSpeechBubble(b,'앗 차가워! 보고서보다 커피가 먼저야?!');});
+      OfficeAudio.event(hits.length?'coffeeHit':'coffeeMiss',hits.length);
       const toast=document.getElementById('ability-toast');toast.textContent=hits.length?`커피 명중! ${hits.length}명 3초 정지 — 지금 옆으로 빠져요!`:'커피가 빗나갔어요 — 가까운 팀장님을 향해 쏟으세요';toast.classList.remove('show');void toast.offsetWidth;toast.classList.add('show');
       const g=new THREE.InstancedMesh(new THREE.SphereGeometry(.034,8,6),styleMaterial(THREE,0x9f673d),28),particles=[];
       const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
@@ -766,6 +806,7 @@
     const forward = camera.getWorldDirection(new THREE.Vector3());
     const room = baby ? null : OfficeSummon.aimRoom(WORLD.meetingRooms, playerRig, {x:forward.x, z:forward.z});
     if (!OfficeSummon.start(summon, baby ? 'baby' : 'five', room)) return;
+    OfficeAudio.event('summon');
 
     bosses.forEach(b=>{ b.stun = 0; b.lastBubbleAt = 0; });
 
@@ -804,9 +845,11 @@
 
   function enterSummonPhase(phase, room){
     if (phase === 'tantrum'){
+      OfficeAudio.event('tantrum');
       showCutIn('예상 밖', '사장님 도주', '둘이 붙어 있는 동안 최대한 멀리 가세요');
     }
     if (phase === 'meeting'){
+      OfficeAudio.event('door');
       sealDoors(room);
       bosses.forEach((b,i)=>{ if (i % 2 === 1 || bosses.length === 1) spawnSpeechBubble(b, summonLine(b,'seated')); });
       showCutIn('진행 중', '문이 닫혔습니다', '회의가 끝나기 전에 최대한 멀리 가세요');
@@ -815,14 +858,31 @@
       clearDoors();
       despawnChief();
       // The interest on borrowed authority: permanently faster, compounding per call.
+      // 야근 모드 takes a gentler step with no ceiling, because there the climb is the score.
+      const factor = isEndless() ? OfficeRank.PROMOTION_SPEED : undefined;
+      const cap = isEndless() ? Infinity : undefined;
       bosses.forEach(b=>{
-        b.rageMult = OfficeSummon.rage(b.rageMult);
+        b.rageMult = OfficeSummon.rage(b.rageMult, factor, cap);
         b.spot = null;
         spawnSpeechBubble(b, summonLine(b,'rage'));
       });
-      const pct = Math.round((bosses[0] ? bosses[0].rageMult : 1) * 100);
-      showCutIn(isBabyMode() ? '상황 종료' : '회의 종료', '팀장님 복귀',
-        `이제부터 끝까지 ${pct}% 속도입니다`);
+      OfficeAudio.event('speedUp');
+      lastAudiblePace=Math.max(lastAudiblePace,(bosses[0]?.rageMult||1)*(isEndless()?OfficeRank.ramp(elapsedGame/1000):1+Math.min(.3,elapsedGame/60000)));
+      if (isEndless()){
+        OfficeRank.promote(rank, elapsedGame/1000);
+        const joined = reinforce();
+        joined.rageMult = bosses[0] ? bosses[0].rageMult : 1;
+        spawnSpeechBubble(joined, '제가 새로 맡게 됐습니다');
+        const chip = document.getElementById('rank-chip');
+        chip.classList.remove('promoted'); void chip.offsetWidth; chip.classList.add('promoted');
+        showCutIn('인사 발령', OfficeRank.title(rank.level) + ' 승진',
+          `점수 ${OfficeRank.rate(rank.level)}/초 · 추격 ${bosses.length}명`);
+        OfficeAudio.event('promotion');
+      } else {
+        const pct = Math.round((bosses[0] ? bosses[0].rageMult : 1) * 100);
+        showCutIn(isBabyMode() ? '상황 종료' : '회의 종료', '팀장님 복귀',
+          `이제부터 끝까지 ${pct}% 속도입니다`);
+      }
       navigationClock = 0;  // point the shared field back at the player on the next frame
     }
   }
@@ -843,6 +903,7 @@
 
     const card = document.getElementById('ability-card');
     const ready = OfficeSummon.ready(summon);
+    if(ready&&!abilityWasReady)OfficeAudio.event('ready');abilityWasReady=ready;
     card.classList.toggle('ready', ready);
     card.classList.toggle('firing', OfficeSummon.active(summon));
     document.getElementById('ult-fill').style.width = (summon.charge*100)+'%';
@@ -915,7 +976,9 @@
       } else {
         // speed ramps up slightly over time (pressure increases), but slowly so the
         // early game gives the player room to learn the map without being rushed
-        const rampMult = 1 + Math.min(0.3, elapsedSec/60);
+        // Timed modes plateau at +30%. 야근 모드 never plateaus, so a run that refuses to
+        // promote still ends instead of jogging in circles forever.
+        const rampMult = isEndless() ? OfficeRank.ramp(elapsedSec) : 1 + Math.min(0.3, elapsedSec/60);
         const feet=playerRig.y-PLAYER_HEIGHT,onFurniture=OfficeTraversal.support(playerRig.x,playerRig.z,WORLD.colliders,feet+.03)>.3;
         const reachClear=onFurniture?!CoffeeAbility.blocked({x:boss.mesh.position.x,y:boss.mesh.userData.headY,z:boss.mesh.position.z},playerRig,WORLD.colliders):navigation.clear(boss.mesh.position,playerRig,0);
         if(!(boss.stun>0) && feet<1.45 && reachClear)minDist=Math.min(minDist,dist-(onFurniture?.55:0));
@@ -971,15 +1034,25 @@
     document.getElementById('gauge-fill').style.width = pct + '%';
     document.getElementById('stamina-fill').style.width = (motion.stamina*100)+'%';
     document.getElementById('stamina-label').textContent = motion.exhausted ? '숨 고르는 중' : '퇴근 체력';
+    if (isEndless()){
+      document.getElementById('rank-title').textContent = OfficeRank.title(rank.level);
+      document.getElementById('rank-score').textContent = Math.floor(rank.score).toLocaleString('ko-KR') + ' 점';
+    }
     const mult = bosses.reduce((m,b)=> Math.max(m, b.rageMult || 1), 1);
+    const pace=mult*(isEndless()?OfficeRank.ramp(elapsedGame/1000):1+Math.min(.3,elapsedGame/60000));if(pace>=lastAudiblePace+.09){lastAudiblePace=pace;OfficeAudio.event('speedUp');}
     document.getElementById('danger-label').textContent =
       OfficeSummon.active(summon)
         ? (summon.mode === 'baby' ? '사장님이 대신 쫓기는 중 — 지금 도망치세요' : '전원 회의 중 — 지금 도망치세요')
+      : isEndless() && mult > 1 ? `추격 ${bosses.length}명 · 속도 ${Math.round(mult*100)}% — 계속 오릅니다`
       : mult > 1 ? `팀장님 속도 ${Math.round(mult*100)}% — 끝까지 이대로입니다`
       : minDist < 3 ? (OfficeSummon.ready(summon) ? '가까워요! Q로 사장님을 부르세요' : '가까워요! 좌클릭으로 커피를 쏟으세요')
       : minDist < 7 ? '팀장님 접근 중'
+      : isEndless() ? (OfficeSummon.ready(summon) ? 'Q를 누르면 승진합니다' : '버틸수록 게이지가 찹니다')
       : '오늘의 목표: 끝까지 버티기';
-    document.getElementById('timer-label').textContent = Math.max(0,remainingSec).toFixed(1) + 's';
+    // Endless counts up; the timed modes count down.
+    document.getElementById('timer-label').textContent = isEndless()
+      ? (elapsedGame/1000).toFixed(1) + 's'
+      : Math.max(0,remainingSec).toFixed(1) + 's';
     return pct;
   }
 
@@ -989,9 +1062,15 @@
     document.getElementById('flash-red').classList.remove('go');
     document.getElementById('pointer-hint').classList.remove('hidden');
     document.getElementById('hud-label').textContent = state.mode==='baby' ? '추격 거리' : '포위 거리';
+    rank = OfficeRank.create();
+    const rankChip = document.getElementById('rank-chip');
+    rankChip.hidden = !isEndless();
+    rankChip.classList.remove('promoted');
     document.getElementById('tap-instruction').textContent = 'WASD / 방향키 이동 · 마우스 시점 · Shift 질주 · Space 책상 넘기 · 좌클릭/F 커피 · Q 사장님 호출 · ESC 일시정지';
 
     if (!scene) initThree();
+    setWorldTheme(scene,state.mode);
+    OfficeAudio.start({night:isEndless()});updateGameSoundButton();
     spawnPlayer();
     spawnBosses();
     lastMinDist = Infinity;
@@ -999,17 +1078,21 @@
     updateHUD(Infinity, state.mode === 'baby' ? 42 : 50);
     const card = document.getElementById('ability-card');
     card.classList.remove('ready','firing');
-    document.getElementById('ability-sub').textContent = state.mode === 'baby'
-      ? '5살 팀장님은 사장님을 모릅니다' : '바라보는 회의실로 전원 소집';
+    document.getElementById('ability-sub').textContent =
+      state.mode === 'baby' ? '5살 팀장님은 사장님을 모릅니다'
+      : isEndless() ? '부를 때마다 승진, 부를 때마다 한 명 더'
+      : '바라보는 회의실로 전원 소집';
     document.getElementById('ability-status').textContent = Math.floor(summon.charge*100)+'%';
     document.getElementById('ult-fill').style.width = (summon.charge*100)+'%';
     document.getElementById('summon-cutin').classList.remove('show');
     document.getElementById('coffee-status').textContent='쏟기 준비';document.getElementById('coffee-fill').style.width='100%';
     document.getElementById('ability-toast').classList.remove('show');
     clearChatter();
+    abilityWasReady=OfficeSummon.ready(summon);lastAudiblePace=1;
 
     gameActive = true;
-    gameDuration = state.mode === 'baby' ? 42000 : 50000;
+    // 야근 모드 has no finish line; the run ends when they finally catch you.
+    gameDuration = isEndless() ? Infinity : (state.mode === 'baby' ? 42000 : 50000);
     lastFrameTime = performance.now();
 
     if (gameRafId) cancelAnimationFrame(gameRafId);
@@ -1037,6 +1120,8 @@
       updateSummon(dt, lastMinDist, elapsedSec);
       updateCoffee(dt);
 
+      if (isEndless()) OfficeRank.gain(rank, dt);
+
       const minDist = updateBosses(dt, elapsedSec);
       lastMinDist = minDist;
       updateSpeechBubbles();
@@ -1063,6 +1148,7 @@
 
   function endGame3D(survived, elapsedMs){
     gameActive = false;
+    OfficeAudio.event(survived?'win':'caught');OfficeAudio.stop();
     clearChatter();
     clearDoors();
     document.getElementById('summon-cutin').classList.remove('show');
@@ -1087,6 +1173,28 @@
 
     const calls = summon.uses;
     const finalMult = bosses.reduce((m,b)=> Math.max(m, b.rageMult || 1), 1);
+
+    if (isEndless()){
+      // Every endless run ends in capture, so red would just mean "you played".
+      const points = Math.floor(rank.score).toLocaleString('ko-KR');
+      tag.style.color = rank.level > 0 ? '#6de4cd' : '#ff8262';
+      tag.textContent = '야근 종료';
+      title.textContent = OfficeRank.title(rank.level) + '에서 마감';
+      desc.textContent = rank.level === 0
+        ? '한 번도 사장님을 부르지 않았습니다. 오래 버텼지만 사원은 사원입니다. 승진해야 점수가 붙습니다.'
+        : rank.level >= OfficeRank.TITLES.length-1
+          ? '더 올라갈 자리가 없습니다. 당신을 쫓던 사람들도 이제 당신 밑입니다.'
+          : `${calls}번 부르고 ${OfficeRank.title(rank.level)}까지 올라갔습니다. 한 계단 더 갔으면 어땠을까요.`;
+      stats.innerHTML = `
+        <div class="stat-pill"><div class="num">${points}</div><div class="lab">점수</div></div>
+        <div class="stat-pill"><div class="num">${OfficeRank.title(rank.level)}</div><div class="lab">최종 직급</div></div>
+        <div class="stat-pill"><div class="num">${seconds}s</div><div class="lab">버틴 시간</div></div>
+        <div class="stat-pill"><div class="num">${bosses.length}</div><div class="lab">마지막 추격 인원</div></div>
+      `;
+      showScreen('screen-result');
+      return;
+    }
+
     if (state.mode === 'baby'){
       if (survived){
         tag.textContent = '생존 성공';

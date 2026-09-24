@@ -1,5 +1,5 @@
 /* A furnished office floor, built in metres. Collision and visual architecture share dimensions. */
-const WORLD={colliders:[],bounds:{minX:-12,maxX:12,minZ:-56,maxZ:6},sun:null,meetingRooms:[],glassMaterial:null};
+const WORLD={colliders:[],bounds:{minX:-12,maxX:12,minZ:-56,maxZ:6},sun:null,meetingRooms:[],glassMaterial:null,theme:null};
 function addCollider(x,z,w,d,topY=Infinity,walkable=false,minY=0){WORLD.colliders.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,topY,walkable,minY});}
 function officeTexture(T,kind){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=512;
@@ -205,11 +205,11 @@ function buildWorld(scene,T,renderer){
   cube(black,0,1.25,-55.85,2.5,2.5,.07);cube(metal,0,1.25,-55.8,.045,2.5,.02);
   label('EXIT  →','오늘도 수고하셨습니다',0,2.9,-55.72,2.8);
   // City massing outside the glazing: depth and warm late-afternoon atmosphere.
-  const buildingMats=[mat(0x718087),mat(0x8b989c),mat(0x5b6a72)];
+  const buildingMats=[mat(0x718087),mat(0x8b989c),mat(0x5b6a72)],exteriorWindows=new T.MeshStandardMaterial({color:0x9aa9aa,roughness:.42,metalness:.3,emissive:0x000000});
   for(let i=0;i<27;i++){
     const x=22+(i%3)*13,z=14-Math.floor(i/3)*11,h=5+(i*7%18);
     cube(buildingMats[i%3],x,h/2-8,z,7,h,8);
-    for(let y=-5;y<h-8;y+=1.25)cube(metal,x-3.52,y,z,.025,.055,7.8);
+    for(let y=-5;y<h-8;y+=1.25)cube(exteriorWindows,x-3.52,y,z,.025,.055,7.8);
   }
   // Architectural cross-beams and numbered portals break up the long perspective.
   for(const z of [-3,-17,-30,-43]){
@@ -238,18 +238,22 @@ function buildWorld(scene,T,renderer){
     inst.castShadow=first.castShadow;inst.receiveShadow=first.receiveShadow;inst.computeBoundingSphere();scene.add(inst);detailBatches++;
   }
   if(renderer){
-    const sky=document.createElement('canvas');sky.width=1024;sky.height=512;const ctx=sky.getContext('2d');
-    const grad=ctx.createLinearGradient(0,0,0,512);grad.addColorStop(0,'#749bb6');grad.addColorStop(.48,'#dce7e9');grad.addColorStop(.57,'#f2ddba');grad.addColorStop(1,'#7a7970');ctx.fillStyle=grad;ctx.fillRect(0,0,1024,512);
-    const tex=new T.CanvasTexture(sky);tex.colorSpace=T.SRGBColorSpace;tex.mapping=T.EquirectangularReflectionMapping;
-    const pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(tex).texture;scene.background=tex;pmrem.dispose();
+    function skyTexture(night){const sky=document.createElement('canvas');sky.width=1024;sky.height=512;const ctx=sky.getContext('2d'),grad=ctx.createLinearGradient(0,0,0,512);if(night){grad.addColorStop(0,'#07101d');grad.addColorStop(.52,'#17283a');grad.addColorStop(.78,'#344354');grad.addColorStop(1,'#141b25');}else{grad.addColorStop(0,'#749bb6');grad.addColorStop(.48,'#dce7e9');grad.addColorStop(.57,'#f2ddba');grad.addColorStop(1,'#7a7970');}ctx.fillStyle=grad;ctx.fillRect(0,0,1024,512);if(night){let seed=19;for(let i=0;i<120;i++){seed=(seed*1664525+1013904223)>>>0;const x=seed%1024;seed=(seed*1664525+1013904223)>>>0;const y=seed%260;const a=.28+(seed%55)/100;ctx.fillStyle=`rgba(220,235,255,${a})`;ctx.fillRect(x,y,i%7===0?2:1,i%7===0?2:1);}ctx.fillStyle='#d9e6e6';ctx.beginPath();ctx.arc(820,102,33,0,Math.PI*2);ctx.fill();ctx.fillStyle='#07101d';ctx.beginPath();ctx.arc(836,91,32,0,Math.PI*2);ctx.fill();}const tex=new T.CanvasTexture(sky);tex.colorSpace=T.SRGBColorSpace;tex.mapping=T.EquirectangularReflectionMapping;return tex;}
+    const day=skyTexture(false),night=skyTexture(true),pmrem=new T.PMREMGenerator(renderer),dayTarget=pmrem.fromEquirectangular(day),nightTarget=pmrem.fromEquirectangular(night);pmrem.dispose();WORLD.theme={day:{background:day,environment:dayTarget.texture,target:dayTarget},night:{background:night,environment:nightTarget.texture,target:nightTarget},buildingMats,exteriorWindows};scene.environment=dayTarget.texture;scene.background=day;
   }
-  for(const z of [-3,-18,-33,-48]){const panel=new T.PointLight(0xfff0d8,.7,20,1);panel.position.set(0,2.9,z);scene.add(panel);}
-  const hemi=new T.HemisphereLight(0xc5dbea,0x7c807e,.9);scene.add(hemi);
+  WORLD.panels=[];for(const z of [-3,-18,-33,-48]){const panel=new T.PointLight(0xfff0d8,.7,20,1);panel.position.set(0,2.9,z);scene.add(panel);WORLD.panels.push(panel);}
+  const hemi=new T.HemisphereLight(0xc5dbea,0x7c807e,.9);scene.add(hemi);WORLD.hemi=hemi;
+  const officeFill=new T.AmbientLight(0xb8c8d4,.08);scene.add(officeFill);WORLD.officeFill=officeFill;
   const sun=new T.DirectionalLight(0xffead0,2.1);sun.position.set(16,14,9);sun.target.position.set(0,0,-8);
   sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18,near:.5,far:70});sun.shadow.bias=-.0002;sun.shadow.normalBias=.035;scene.add(sun,sun.target);WORLD.sun=sun;
-  const bounce=new T.DirectionalLight(0xd4e8ff,.5);bounce.position.set(-5,5,-20);scene.add(bounce);
+  const bounce=new T.DirectionalLight(0xd4e8ff,.5);bounce.position.set(-5,5,-20);scene.add(bounce);WORLD.bounce=bounce;
   WORLD.glassMaterial=glass;
   WORLD.stats={colliders:WORLD.colliders.length,instancedBatches:pools.size+detailBatches};
+}
+function setWorldTheme(scene,mode){
+  const night=mode==='endless',theme=WORLD.theme;if(!theme)return;const selected=night?theme.night:theme.day;scene.background=selected.background;scene.environment=selected.environment;if(scene.fog)scene.fog.color.setHex(night?0x111d2a:0xc7d7df);
+  const dayColors=[0x718087,0x8b989c,0x5b6a72],nightColors=[0x172333,0x202d3b,0x111c2a];theme.buildingMats.forEach((m,i)=>m.color.setHex((night?nightColors:dayColors)[i]));theme.exteriorWindows.color.setHex(night?0x5d6670:0x9aa9aa);theme.exteriorWindows.emissive.setHex(night?0xe7c681:0x000000);theme.exteriorWindows.emissiveIntensity=night?.75:0;
+  WORLD.sun.color.setHex(night?0xa8c2ee:0xffead0);WORLD.sun.intensity=night?.72:2.1;WORLD.hemi.color.setHex(night?0x92abc8:0xc5dbea);WORLD.hemi.groundColor.setHex(night?0x515861:0x7c807e);WORLD.hemi.intensity=night?.88:.9;WORLD.officeFill.intensity=night?.62:.08;WORLD.bounce.intensity=night?.5:.5;WORLD.panels.forEach(p=>{p.intensity=night?1.85:.7;});
 }
 function updateWorldLighting(x,z){
   if(!WORLD.sun)return;

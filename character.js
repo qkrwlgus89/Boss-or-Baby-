@@ -106,7 +106,9 @@ function buildProp3D(id,T){
 }
 function buildBossMesh(opts,T){
   const baby=!!opts.isBaby;
-  const profiles={round:[1.1,.96,1.02,.90],square:[1.04,1.02,1.08,1.04],tall:[.89,1.14,.91,1.11],soft:[1.19,.94,1.20,.92],slim:[.90,1.04,.89,1.00]};
+  // Face proportions stay close to human variation. Build shape locally instead of
+  // stretching the skeleton, eyes, hands, hair and held objects together.
+  const profiles={round:[1.012,1,.004,.995],square:[1.008,1.004,.003,1.01],tall:[.992,1.025,-.004,1.025],soft:[1.008,1,.014,1],slim:[.986,1.01,-.008,1.01]};
   const identity=opts.identity||'round',profile=profiles[identity]||profiles.round;
   const group=new T.Group(),root=new T.Group();group.add(root);
   const skin=styleMaterial(T,(PALETTE3D.skin.find(s=>s.id===opts.skin)||PALETTE3D.skin[0]).hex);
@@ -115,7 +117,10 @@ function buildBossMesh(opts,T){
   const trouser=styleMaterial(T,opts.outfit==='suit'?0x34435b:0x3e4d60),accent=styleMaterial(T,baby?0xffcb67:0xe78669);
   const add=(p,g,m,x=0,y=0,z=0)=>styleMesh(T,p,g,m,x,y,z);
   // Soft tapered jacket, shortened legs and broad hands share one illustration style.
-  const torso=add(root,tailorGeometry([[.64,.001,.001],[.655,.18,.12],[.69,.22,.145],[.80,.228,.16],[.95,.245,.155],[1.075,.27,.14],[1.12,.25,.12],[1.16,.18,.095],[1.20,.065,.065]],T,48),cloth);
+  const fullness=baby?profile[2]*.45:profile[2];
+  const belly=y=>Math.exp(-(((y-.84)/.19)**2));
+  const torsoRings=[[.64,.001,.001],[.655,.17,.12],[.69,.205,.145],[.80,.212,.16],[.95,.226,.155],[1.075,.25,.14],[1.12,.232,.12],[1.16,.17,.095],[1.20,.062,.065]];
+  const torso=add(root,tailorGeometry(torsoRings.map(([y,x,z])=>[y,x+(x>.1?fullness*.2*belly(y):0),z+(z>.09?fullness*.9*belly(y):0)]),T,48),cloth);
   const jacket=['suit','vest'].includes(opts.outfit);
   if(jacket){const shirt=stylePatch(T,root,[[-.072,1.17],[.072,1.17],[0,.89]],white);shirt.position.z=.163;
     for(const side of [-1,1]){const lapel=stylePatch(T,root,[[side*.065,1.17],[side*.167,1.10],[side*.12,1.04],[side*.14,1.00],[0,.86]],cloth);lapel.position.z=.173;}
@@ -131,7 +136,8 @@ function buildBossMesh(opts,T){
   const geo=tailorGeometry(headRings,T,64),p=geo.attributes.position;
   for(let i=0;i<p.count;i++){
     let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
-    if(identity==='square' && y>.09 && y<.23)x*=1.12;
+    if(identity==='square')x*=1+.055*Math.exp(-(((y-.16)/.065)**2));
+    if(identity==='soft'||identity==='round')z*=1+.025*Math.exp(-(((y-.23)/.065)**2));
     // The nose is sculpted into the surface, not attached as a ball.
     if(z>0)z+=.040*Math.exp(-((x/.035)**2)-(((y-.225)/.041)**2));
     p.setXYZ(i,x*profile[0],y*profile[1],z);
@@ -169,7 +175,7 @@ function buildBossMesh(opts,T){
       const rx=(ra[1]+(rb[1]-ra[1])*mix)*1.10+.006,rz=(ra[2]+(rb[2]-ra[2])*mix)*1.10+.006;
       let x=Math.sin(a)*rx*profile[0],z=Math.cos(a)*rz,yy=y*profile[1];
       if(opts.hair==='comb'){x+=.031*t;yy+=.032*t*(.7+Math.sin(a)*.3);}
-      if(opts.hair==='perm'){const wave=1+.08*Math.sin(a*9+j*.9);x*=1.15*wave;z*=1.15*wave;yy+=.027*t;}
+      if(opts.hair==='perm'){const wave=1+.035*Math.sin(a*9+j*.9);x*=1.035*wave;z*=1.05*wave;yy+=.027*t;}
       if(opts.hair==='spiky')yy+=t*.045+Math.sin(a*7)**2*.021*Math.sin(t*Math.PI);
       if(opts.hair==='mullet'){x*=1.08;z*=1.10;}
       hp.push(x,yy,z-.004);hu.push(i/segments,t);
@@ -177,9 +183,18 @@ function buildBossMesh(opts,T){
     }
     const h=new T.BufferGeometry();h.setAttribute('position',new T.Float32BufferAttribute(hp,3));h.setAttribute('uv',new T.Float32BufferAttribute(hu,2));h.setIndex(hi);h.computeVertexNormals();add(head,h,hairMat);
   }
+  // Move sewn details with the jacket surface; keep their own dimensions intact.
+  root.children.forEach(part=>{
+    if(part===torso||part===head)return;
+    if(part===tie){part.position.z+=Math.max(0,fullness)*.45;return;}
+    if(part.geometry){const attr=part.geometry.attributes.position;
+      for(let i=0;i<attr.count;i++){const worldY=attr.getY(i)+part.position.y;attr.setZ(i,attr.getZ(i)+fullness*.8*belly(worldY));}
+      attr.needsUpdate=true;part.geometry.computeVertexNormals();
+    }
+  });
   const limbs=[];
   for(const side of [-1,1]){
-    const arm=new T.Group();arm.position.set(side*.255,1.095,0);root.add(arm);
+    const arm=new T.Group();arm.position.set(side*(.244+Math.max(0,fullness)*.06),1.095,0);root.add(arm);
     const sleeve=opts.outfit==='vest'?white:cloth;
     // One skinned sleeve, smoothly weighted through its elbow instead of detached tubes.
     const sleeveGeo=tailorGeometry([[.034,.001,.001],[.025,.049,.060],[0,.075,.08],[-.09,.069,.068],[-.20,.058,.055],[-.26,.051,.048],[-.36,.044,.042],[-.44,.036,.036]],T,32);
@@ -191,7 +206,7 @@ function buildBossMesh(opts,T){
     const hand=stylizedHand(T,skin,side===1&&opts.prop!=='none');hand.position.y=-.23;elbow.add(hand);
     const holding=side===1 && opts.prop!=='none' && opts.prop!=='pacifier';
     if(holding){const prop=buildProp3D(opts.prop,T);if(prop){prop.position.set(-.015,-.034,.058);hand.add(prop);if(opts.prop==='paper'){hand.rotation.x=.72;hand.children[0].position.x=.084;prop.position.x=0;const thumb=add(hand,roundedShape(T,.033,.050,.016,.013),skin,.085,-.036,.086);}}}
-    const hip=new T.Group();hip.position.set(side*.105,.69,0);root.add(hip);
+    const hip=new T.Group();hip.position.set(side*(.098+Math.max(0,fullness)*.04),.69,0);root.add(hip);
     const legGeo=tailorGeometry([[.035,.091,.115],[0,.10,.115],[-.13,.085,.092],[-.29,.073,.073],[-.40,.064,.068],[-.54,.059,.060],[-.60,.062,.065]],T,32);
     const lp=legGeo.attributes.position,li=[],lw=[];for(let i=0;i<lp.count;i++){const t=T.MathUtils.smoothstep(-lp.getY(i),.22,.38);li.push(0,1,0,0);lw.push(1-t,t,0,0);}
     legGeo.setAttribute('skinIndex',new T.Uint16BufferAttribute(li,4));legGeo.setAttribute('skinWeight',new T.Float32BufferAttribute(lw,4));
@@ -200,9 +215,9 @@ function buildBossMesh(opts,T){
     limbs.push({arm,elbow,hip,knee,side,holding});
   }
   if(opts.prop==='pacifier'){const p=buildProp3D('pacifier',T);p.position.set(0,mouthY,.145);head.add(p);}
-  root.scale.set(profile[2],profile[3],1);
-  if(baby){group.scale.setScalar(.64);head.scale.setScalar(1.15);root.scale.set(1.05,.90,1);}
-  group.userData={root,head,limbs,tie,eyes,isBaby:baby,identity,headY:baby?1.02:1.68*profile[3],phase:0,lastTime:null};return group;
+  group.scale.setScalar(profile[3]);
+  if(baby){group.scale.setScalar(.64);head.scale.setScalar(1.15);root.scale.setScalar(1);}
+  group.userData={root,head,limbs,tie,eyes,isBaby:baby,identity,headY:baby?1.10:1.68*profile[3],phase:0,lastTime:null};return group;
 }
 function animateBossMesh(mesh,time,speed,stunned){
   const d=mesh.userData,dt=d.lastTime===null?0:Math.min(.05,Math.max(0,time-d.lastTime));d.lastTime=time;

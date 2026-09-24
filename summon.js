@@ -27,8 +27,12 @@
   function ready(s){return s.phase==='idle' && s.charge>=1;}
   function active(s){return s.phase!=='idle';}
 
-  /* The cost of borrowing that authority, charged once per call and never refunded. */
-  function rage(current){return Math.min(RAGE_CAP,(current||1)*RAGE_SPEED);}
+  /* The cost of borrowing that authority, charged once per call and never refunded.
+     The timed modes take the default step and ceiling. 야근 모드 passes its own gentler
+     step with no ceiling, because there the climb is the score and the run must end. */
+  function rage(current,factor,cap){
+    return Math.min(cap===undefined?RAGE_CAP:cap,(current||1)*(factor===undefined?RAGE_SPEED:factor));
+  }
 
   /* In five mode the ultimate is aimed: whichever meeting room you face is the one
      they are called to. Look the wrong way and you summon them onto yourself. */

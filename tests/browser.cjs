@@ -17,11 +17,12 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
  // In-memory instrumentation only: exercises production functions without adding a debug API.
  await page.route('**/game3d.js',async route=>{
   const response=await route.fetch();let body=await response.text();
-  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},chiefAt:(x,z)=>{if(chief)chief.mesh.position.set(x,0,z);},say:(i,t)=>spawnSpeechBubble(bosses[i],t),hush:()=>clearChatter(),calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
+  body=body.replace(/\}\)\(\);\s*$/,`window.__qa={snapshot:()=>({player:{...playerRig},yaw,pitch,elapsedGame,mouseLocked,gameActive,keys:{...keys},coffeeCooldown,coffeeAnim,grounded:isGrounded,stamina:motion.stamina,summon:{charge:summon.charge,phase:summon.phase,mode:summon.mode,uses:summon.uses,room:summon.room?summon.room.code:null,doors:summonDoors.length,chief:chief?{x:chief.mesh.position.x,z:chief.mesh.position.z}:null},rank:{level:rank.level,score:rank.score,title:OfficeRank.title(rank.level)},mode:state.mode,bosses:bosses.map(b=>({x:b.mesh.position.x,z:b.mesh.position.z,stun:b.stun,rageMult:b.rageMult,spot:b.spot})),render:renderer?.info.render,memory:renderer?.info.memory}),scene:()=>scene,camera:()=>camera,preview:()=>custMesh,avatars:()=>state.fiveAvatars,nav:()=>navigation,rooms:()=>WORLD.meetingRooms,place:(x,z,y=PLAYER_HEIGHT)=>{playerRig.x=x;playerRig.z=z;playerRig.y=y;verticalVelocity=0;isGrounded=true;motion=FPSMovement.create();},aim:(y,p=0)=>{yaw=y;pitch=p;camera.rotation.set(p,y,0,"YXZ");camera.updateMatrixWorld();},boss:(i,x,z)=>bosses[i].mesh.position.set(x,0,z),step:(dt)=>{updatePlayerMovement(dt);updateSummon(dt,Infinity,0);updateCoffee(dt);return updateBosses(dt,0);},ready:()=>{coffeeCooldown=0;coffeeQueued=false;summon.charge=1;bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},charge:(v)=>{summon.charge=v;},chiefAt:(x,z)=>{if(chief)chief.mesh.position.set(x,0,z);},say:(i,t)=>spawnSpeechBubble(bosses[i],t),hush:()=>clearChatter(),calm:()=>{bosses.forEach(b=>{b.stun=0;b.rageMult=1;});},time:(ms)=>{elapsedGame=ms;}};})();`);
   await route.fulfill({response,body});
  });
+ await page.route('**/game-audio.js',async route=>{const response=await route.fetch();const body=(await response.text()).replace('})(window);',`const qaEvents=[];const qaEvent=root.OfficeAudio.event;root.OfficeAudio.event=(...args)=>{qaEvents.push(args[0]);return qaEvent(...args);};root.__audioQA=()=>({events:[...qaEvents],context:ctx?.state||'none',muted});})(window);`);await route.fulfill({response,body});});
  async function lock(){await page.locator('#pointer-hint').click();await page.waitForFunction(()=>__qa.snapshot().mouseLocked && __qa.snapshot().elapsedGame>0);}
- await page.goto('http://127.0.0.1:8080');await page.locator('#btn-go-select').click();await page.locator('#card-five').click();
+ await page.goto('http://127.0.0.1:8080');await page.locator('#intro-player-name').fill('테스트사원');await page.locator('#intro-begin').click();await page.locator('#intro-skip').click();await page.locator('#card-five').click();
  async function option(cat,val){await page.locator(`[data-cat="${cat}"]`).click();await page.locator(`[data-val="${val}"]`).click();}
  await option('hair','comb');await option('outfit','suit');await option('face','smug');await option('skin','fair');await option('prop','paper');
  await page.waitForTimeout(700);await page.screenshot({path:path.join(output,'adult-final.png')});
@@ -39,11 +40,12 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
  }else{await page.locator('#btn-cust-back').click();await page.locator('#card-baby').click();}
  await option('hair','perm');await option('face','angry');await option('skin','fair');await option('prop','none');
  await page.waitForTimeout(700);await page.screenshot({path:path.join(output,'baby-final.png')});
- await page.locator('#btn-cust-back').click();await page.locator('#card-five').click();
+ await page.locator('#btn-cust-back').click();await page.locator(mode==='night'?'#card-endless':'#card-five').click();
  assert.equal(await page.evaluate(()=>new Set(__qa.avatars().map(a=>a.identity)).size),5,'five bosses have five distinct profiles');
  await page.locator('#btn-cust-go').click();await page.waitForTimeout(700);
  await page.locator('#pointer-hint').evaluate(el=>el.style.visibility='hidden');
  await page.screenshot({path:path.join(output,'office-final.png')});
+ if(mode==='night'){await page.screenshot({path:path.join(output,'endless-night.png')});await page.evaluate(()=>{const c=__qa.camera();c.position.set(8.7,1.65,-20);c.rotation.set(0,-Math.PI/2,0,'YXZ');});await page.waitForTimeout(180);await page.screenshot({path:path.join(output,'endless-window.png')});assert.equal((await page.evaluate(()=>__qa.snapshot())).mode,'endless');assert.notEqual(await page.evaluate(()=>__audioQA().context),'none');console.log('PASS focused night lighting and audio context');return;}
  // Views from actual camera locations, paused; QA only hides the pause overlay for captures.
  for(const [name,x,z,yaw] of [['meeting',8.8,-11,1.4],['lounge',8.6,-20,-.6],['workstations',-2,-15,1.1]]){
   await page.evaluate(([x,z,yaw])=>{const c=__qa.camera();c.position.set(x,1.65,z);c.rotation.set(0,yaw,0,'YXZ');updateWorldLighting(x,z);},[x,z,yaw]);
@@ -83,6 +85,7 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
     console.log('PASS real keyboard: jump onto desk, land, jump-side escape and 16m side corridor');
     await park();await page.evaluate(()=>{__qa.place(0,2.5);__qa.aim(0);__qa.boss(0,0,-.5);__qa.boss(1,.8,-1);__qa.boss(2,0,5.3);__qa.boss(3,0,-8);__qa.boss(4,4,2.5);});
     await page.keyboard.press('f');await page.waitForFunction(()=>__qa.snapshot().coffeeCooldown>5);
+    assert.ok((await page.evaluate(()=>__audioQA().events)).includes('coffee'),'coffee starts its pour cue');assert.ok((await page.evaluate(()=>__audioQA().events)).includes('coffeeHit'),'a hit adds impact audio');
     const hit=await page.evaluate(()=>__qa.snapshot());assert.ok(hit.bosses[0].stun>2.5&&hit.bosses[1].stun>2.5);assert.equal(hit.bosses[2].stun,0);assert.equal(hit.bosses[3].stun,0);assert.equal(hit.bosses[4].stun,0);
     await page.keyboard.press('Escape');await page.waitForTimeout(100);const pausedCoffee=await page.evaluate(()=>__qa.snapshot().coffeeCooldown);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>__qa.snapshot().coffeeCooldown),pausedCoffee);
     await page.locator('#pointer-hint').evaluate(e=>e.style.visibility='hidden');await page.screenshot({path:path.join(output,'coffee-hit.png')});await page.locator('#pointer-hint').evaluate(e=>e.style.visibility='');
@@ -144,6 +147,7 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   assert.equal(after.summon.doors,0,'the doors open again');
   assert.equal(after.summon.chief,null,'the 사장님 leaves with the meeting');
   assert.equal(after.summon.uses,1);
+  const audioEvents=await page.evaluate(()=>__audioQA().events);for(const cue of ['summon','door','speedUp'])assert.ok(audioEvents.includes(cue),`${cue} audio cue fired`);
   // Rage must not tick away, and a second call must compound on top of the first.
   await page.waitForTimeout(1200);
   const held=(await page.evaluate(()=>__qa.snapshot())).bosses[0].rageMult;
@@ -214,6 +218,60 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   await page.waitForTimeout(1100);await lock();await page.evaluate(()=>__qa.boss(0,0,2.2));await page.locator('#screen-result.active').waitFor({timeout:30000});assert.match(await page.locator('#result-title').textContent(),/붙잡힘/);
   await page.locator('#btn-result-retry').click();await lock();await page.evaluate(()=>__qa.time(41990));await page.locator('#screen-result.active').waitFor();assert.match(await page.locator('#result-title').textContent(),/칼퇴/);
   console.log('PASS both modes: pointer lock, movement, mouse, jump, Q, ESC, defeat, retry, victory');
+ }
+ if(full || mode==='game'){
+  // 야근 모드: no clock, promotions are the score, and each one puts another body on the floor.
+  await page.locator('#btn-result-mode').click();await page.locator('#card-endless').click();
+  await page.locator('#btn-cust-go').click();await lock();
+  let run=await page.evaluate(()=>__qa.snapshot());
+  assert.equal(run.mode,'endless');
+  assert.equal(run.rank.level,0);
+  assert.equal(run.rank.title,'사원');
+  assert.equal(run.bosses.length,2,'the endless run opens with a smaller crew');
+  assert.ok(await page.locator('#rank-chip').isVisible(),'the rank plaque is shown');
+  assert.notEqual(await page.evaluate(()=>__audioQA().context),'none','game click creates the audio context');await page.keyboard.press('Escape');await page.waitForTimeout(100);await page.locator('#pointer-hint').evaluate(e=>e.style.visibility='hidden');await page.screenshot({path:path.join(output,'endless-night.png')});await page.locator('#pointer-hint').evaluate(e=>e.style.visibility='');await page.waitForTimeout(1100);await lock();
+  // The clock counts up instead of down, and never ends the run on its own.
+  await page.evaluate(()=>__qa.time(200000));
+  await page.waitForTimeout(150);
+  assert.equal(await page.locator('#screen-result.active').count(),0,'no timer can end an endless run');
+  assert.match(await page.locator('#timer-label').textContent(),/^2\d\d\.\ds$/,'the clock counts up');
+  await page.evaluate(()=>__qa.time(0));
+  // Points accrue, and a promotion makes them accrue much faster.
+  const before1=(await page.evaluate(()=>__qa.snapshot())).rank.score;
+  await page.waitForTimeout(600);
+  const after1=(await page.evaluate(()=>__qa.snapshot())).rank.score;
+  assert.ok(after1>before1,'score accrues while surviving');
+  await page.evaluate(()=>{__qa.place(0,-24);__qa.aim(Math.PI);__qa.ready();});
+  await page.keyboard.press('q');
+  await page.waitForFunction(()=>__qa.snapshot().summon.phase!=='idle',{},{timeout:6000});
+  await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:14000});
+  run=await page.evaluate(()=>__qa.snapshot());
+  assert.equal(run.rank.level,1,'calling the 사장님 is a promotion');
+  assert.equal(run.rank.title,'대리');
+  assert.equal(run.bosses.length,3,'and puts one more person on the floor');
+  assert.ok(run.bosses.every(b=>b.rageMult>1),'including the newcomer, everyone speeds up');
+  const rate0=(await page.evaluate(()=>__qa.snapshot())).rank.score;
+  await page.waitForTimeout(600);
+  const rate1=(await page.evaluate(()=>__qa.snapshot())).rank.score;
+  assert.ok(rate1-rate0 > (after1-before1)*2,'a promotion pays far better than camping');
+  // Endless rage has no ceiling: enough promotions must pass the timed-mode cap.
+  for(let i=0;i<5;i++){
+    await page.evaluate(()=>{__qa.charge(1);__qa.place(0,-24);__qa.aim(Math.PI);});
+    await page.keyboard.press('q');
+    await page.waitForFunction(()=>__qa.snapshot().summon.phase!=='idle',{},{timeout:6000});
+    await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:14000});
+  }
+  run=await page.evaluate(()=>__qa.snapshot());
+  assert.equal(run.rank.level,6);
+  assert.equal(run.rank.title,'사장','six promotions reaches the top of the ladder');
+  assert.equal(run.bosses.length,8);
+  assert.ok(run.bosses[0].rageMult>2.2,'endless is uncapped, unlike the timed modes');
+  // Getting caught ends the run on the rank screen, not the survival one.
+  await page.evaluate(()=>{__qa.place(0,0);for(let i=0;i<__qa.snapshot().bosses.length;i++)__qa.boss(i,0,-.3);});
+  await page.locator('#screen-result.active').waitFor({timeout:30000});
+  assert.match(await page.locator('#result-title').textContent(),/사장에서 마감/);
+  assert.match(await page.locator('#result-stats').textContent(),/점수/);
+  console.log('PASS 야근 모드: no clock, promotion ladder, growing crew, uncapped pace, rank result');
  }
  assert.deepEqual(errors,[]);assert.deepEqual(badResponses,[]);console.log('PASS no JS exceptions or HTTP errors');
  }finally{await browser.close();}

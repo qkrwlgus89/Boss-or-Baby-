@@ -10,10 +10,18 @@
 .intro-top-actions{display:flex;gap:22px;align-items:flex-start;pointer-events:auto}
 .intro-top button{font-size:11px;color:#d4dadd;padding:8px 0;border-bottom:1px solid #ffffff40;background:#10202b55}
 .intro-crosshair{position:absolute;top:50%;left:50%;width:4px;height:4px;border-radius:50%;background:#fff9;box-shadow:0 0 3px #000;transform:translate(-50%,-50%);pointer-events:none}
-.intro-action{position:absolute;top:64%;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;white-space:nowrap;font-size:12px;text-shadow:0 2px 6px #000}
-#intro-interaction{color:#c4ced5;font-size:11px}.can-interact #intro-interaction{font-size:13px;background:#eee8d8;color:#182630;padding:5px 8px;border-radius:2px;text-shadow:none}
-#btn-go-select{font-size:13px;padding:8px 10px;border-bottom:1px solid #e2cfaa80;background:#101b2577;border-radius:2px}
-#btn-go-select:disabled{opacity:.5;cursor:default}
+/* The prompt has to be readable over a bright lobby without becoming a slab. A blurred
+   pill low on the screen carries the text; only the key cap is allowed to be solid. */
+.intro-action{position:absolute;top:auto;bottom:182px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:0;white-space:nowrap;
+  background:#0a141c4d;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  border:1px solid #ffffff1c;border-radius:999px;box-shadow:0 5px 20px #00000040;overflow:hidden}
+#intro-interaction{font-size:12.5px;font-weight:600;color:#ecdfc8;padding:9px 17px;letter-spacing:-.01em;text-shadow:0 2px 7px #000}
+.can-interact .intro-action{background:#0a141c66;border-color:#e5bd8859}
+.can-interact #intro-interaction{font:900 15px/1 inherit;background:#e5bd88;color:#15242c;padding:10px 15px;letter-spacing:0;text-shadow:none}
+#btn-go-select{font-size:13.5px;font-weight:600;padding:9px 18px;background:none;border-radius:0;color:#cbd8dd;cursor:default;text-shadow:0 2px 7px #000}
+.can-interact #btn-go-select{color:#fff7ea;cursor:pointer}
+.can-interact #btn-go-select:hover{background:#ffffff1a}
+#btn-go-select:disabled{opacity:1}
 .intro-subtitles{position:absolute;bottom:95px;left:50%;transform:translateX(-50%);width:min(850px,86%);text-align:center;pointer-events:none;text-shadow:0 2px 5px #000,0 1px 15px #000}
 #intro-speaker{display:inline-block;color:#e3c391;font-size:12px;letter-spacing:.1em;margin-bottom:12px}
 #intro-dialogue{font-size:clamp(17px,1.7vw,24px);line-height:1.7;word-break:keep-all;font-weight:550}
@@ -25,18 +33,78 @@
 #screen-select{overflow-y:auto;justify-content:flex-start;padding-top:max(30px,6vh)}
 #screen-select>.cards,#screen-select>.intro-replay,#screen-select>.eyebrow,#screen-select>.select-title{flex-shrink:0}
 @media(min-width:1100px){#screen-select>.cards{max-width:1000px}}
-@media(max-width:700px){.intro-top{top:20px;left:20px;right:20px;display:block}.intro-top-actions{margin-top:20px;gap:20px}#intro-objective{font-size:12px}.intro-subtitles{bottom:120px}.intro-controls{left:20px;right:20px;bottom:22px;flex-wrap:wrap;gap:10px}.intro-action{top:53%;max-width:95%;white-space:normal}#intro-dialogue{font-size:17px}}
+@media(max-width:700px){.intro-top{top:20px;left:20px;right:20px;display:block}.intro-top-actions{margin-top:20px;gap:20px}#intro-objective{font-size:12px}.intro-subtitles{bottom:120px}.intro-controls{left:20px;right:20px;bottom:22px;flex-wrap:wrap;gap:10px}.intro-action{bottom:206px;max-width:92%;white-space:normal}#intro-dialogue{font-size:17px}}
 @media(prefers-reduced-motion:reduce){.intro *{transition:none!important}}
 /* Main menu: an explicit start over the live, unoccupied night office. */
 .intro-menu{display:none;position:absolute;inset:0;z-index:4;padding:40px 5.5%;background:linear-gradient(90deg,#080f19f0 0%,#080f19a8 36%,#080f1915 76%),linear-gradient(0deg,#080f19d9,transparent 25%)}
 .with-menu .intro-menu{display:block}.with-menu>.intro-top,.with-menu>.intro-crosshair,.with-menu>.intro-action,.with-menu>.intro-subtitles,.with-menu>.intro-controls{display:none}
-.menu-brand{font-size:11px;letter-spacing:.22em;color:#adc1c4}.menu-brand span{color:#b39166;margin-left:22px}
-.menu-title{position:absolute;left:8%;top:50%;transform:translateY(-47%)}.menu-title>p{font-size:13px;color:#bbc6ca;letter-spacing:.025em;margin-bottom:25px}
+.menu-brand{transform:translate(var(--lean-x,0px),var(--lean-y,0px));transition:transform .12s linear;font-size:11px;letter-spacing:.22em;color:#adc1c4}.menu-brand span{color:#b39166;margin-left:22px}
+.menu-title{position:absolute;left:8%;top:50%;transform:translate(calc(var(--lean-x,0px)*1.7),calc(-47% + var(--lean-y,0px)*1.4));transition:transform .12s linear;will-change:transform}.menu-title>p{font-size:13px;color:#bbc6ca;letter-spacing:.025em;margin-bottom:25px}
 .menu-title h1{font-size:clamp(70px,8vw,128px);line-height:1.02;font-weight:900;letter-spacing:-.08em;text-shadow:0 10px 70px #0005}.menu-title h1 em{font-style:normal;color:#e9ba7d}.menu-title-dot{color:#e9ba7d}.menu-en{font-size:13px;letter-spacing:.55em;color:#819da7;margin:24px 0 43px}
-.menu-entry{width:min(500px,84vw)}.menu-entry>label{display:block;font-size:11px;letter-spacing:.14em;color:#b8c7c9;margin-bottom:9px}.menu-name-row{display:flex;gap:8px}.menu-name-row input{min-width:0;flex:1;background:#101d26d9;color:#f6f1e8;border:1px solid #91a8ad66;border-radius:2px;padding:17px 18px;font:600 16px inherit;outline:none;box-shadow:inset 0 0 0 1px #0003}.menu-name-row input::placeholder{color:#87999d}.menu-name-row input:focus{border-color:#e5bd88;box-shadow:0 0 0 3px #e5bd8820}.menu-name-row input[aria-invalid='true']{border-color:#e08c78}
-#intro-begin{display:flex;align-items:center;justify-content:space-between;width:210px;background:#e5bd88;color:#13252b;padding:16px 20px;font-size:16px;font-weight:800;border-radius:2px;box-shadow:0 10px 40px #0003;transition:background .2s,translate .2s}#intro-begin:hover:not(:disabled){background:#f6d8ad;translate:0 -2px}#intro-begin:disabled{cursor:not-allowed;filter:saturate(.25);opacity:.42}#intro-begin span{font-weight:400;font-size:23px}.menu-entry>small{display:block;font-size:10px;letter-spacing:.06em;color:#9db1b7;margin-top:11px}
-.menu-footer{position:absolute;bottom:32px;left:5.5%;right:5.5%;display:flex;justify-content:space-between;color:#9aadb4;font-size:10px;letter-spacing:.08em}
-@media(max-width:700px){.menu-title{left:8%}.menu-title h1{font-size:70px}.menu-brand span{display:none}.menu-title>p{font-size:11px}.menu-name-row{display:block}.menu-name-row input,#intro-begin{width:100%}#intro-begin{margin-top:8px}.menu-footer{display:block;line-height:2}.menu-footer span{display:block}}
-@media(max-height:650px){.menu-title h1{font-size:66px}.menu-en{margin:15px 0 20px}.menu-title>p{margin-bottom:16px}}
+/* The menu is now only a start button; the name is taken later, in the story. */
+.menu-start{display:inline-flex;align-items:center;gap:14px;background:#e5bd88;color:#13252b;padding:18px 34px;font-size:17px;font-weight:800;border-radius:2px;box-shadow:0 12px 44px #0004;transition:background .2s,translate .2s}
+.menu-start:hover{background:#f6d8ad;translate:0 -2px}
+.menu-start span{font-weight:400;font-size:22px}
 
-.intro.inspecting .intro-action{top:auto;bottom:190px;opacity:.18}.intro.inspecting .intro-action:hover{opacity:1}.intro.inspecting .intro-crosshair{opacity:.18}
+/* The phone: a lock screen that slides in and buzzes when the result text arrives. */
+.intro-phone{position:absolute;right:6%;bottom:0;z-index:4;opacity:0;pointer-events:none;transform:translateY(60px);transition:opacity .45s,transform .45s cubic-bezier(.2,.9,.3,1)}
+.with-phone .intro-phone{opacity:1;transform:translateY(8%)}
+.phone-body{position:relative;width:min(300px,26vw);aspect-ratio:9/18.5;border-radius:34px;padding:16px 14px;
+  background:linear-gradient(170deg,#1b2a33,#0d161d 40%);border:2px solid #2f4149;
+  box-shadow:0 30px 70px #000a,inset 0 0 0 5px #070d12}
+.with-phone .phone-body{animation:phone-buzz .55s ease-out 1}
+.phone-notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:34%;height:17px;background:#070d12;border-radius:0 0 11px 11px}
+.phone-status{display:flex;justify-content:space-between;font-size:9.5px;color:#b6c6cc;padding:3px 8px 0;letter-spacing:.04em}
+.phone-signal{letter-spacing:.1em}
+.phone-clock{text-align:center;margin-top:16%}
+.phone-clock strong{display:block;font-size:44px;font-weight:300;letter-spacing:-.02em;color:#f1f4f3;line-height:1}
+.phone-clock span{display:block;font-size:11px;color:#aebec4;margin-top:5px}
+.phone-sms{margin-top:15%;background:#e9eef0f2;color:#16222a;border-radius:13px;padding:11px 12px;box-shadow:0 8px 22px #0006}
+.phone-sms-head{display:flex;justify-content:space-between;font-size:9px;color:#5d7178;letter-spacing:.04em;margin-bottom:5px}
+.phone-app{font-weight:800;color:#3c5058}
+.phone-sms p{font-size:11.5px;line-height:1.55;word-break:keep-all}
+.phone-sms b{font-weight:800}
+@keyframes phone-buzz{0%,100%{margin-left:0}15%{margin-left:-5px}32%{margin-left:5px}52%{margin-left:-3px}72%{margin-left:2px}}
+
+/* The lookup form is keyboard capture only: it is parked off screen while the real
+   page is painted onto the laptop, so typing goes into the world, not into a dialog. */
+.intro-lookup{position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden}
+/* Typing happens on the laptop, so the overlay HUD steps aside. */
+.intro.typing>.intro-action,.intro.typing>.intro-subtitles,.intro.typing>.intro-crosshair{opacity:0;pointer-events:none}
+
+/* Controls overview, shown once between entering a name and the first chapter. */
+.intro-howto{display:none;position:absolute;inset:0;z-index:6;align-items:center;justify-content:center;padding:32px 5%;
+  background:linear-gradient(0deg,#060d15f2,#060d15d9)}
+.with-howto .intro-howto{display:flex}
+.with-howto>.intro-top,.with-howto>.intro-crosshair,.with-howto>.intro-action,.with-howto>.intro-subtitles,.with-howto>.intro-controls,.with-howto>.intro-alerts{display:none}
+.howto-card{width:min(760px,100%);max-height:100%;overflow-y:auto;background:#101d27f2;border:1px solid #7f9aa655;border-radius:6px;padding:34px 38px;box-shadow:0 26px 70px #000a}
+.howto-kicker{display:block;font-size:11px;letter-spacing:.22em;color:#8fb0b8}
+.howto-card h2{font-size:34px;font-weight:900;letter-spacing:-.05em;margin:10px 0 8px}
+.howto-lead{font-size:13px;color:#b6c8cd;margin-bottom:26px}
+.howto-cols{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+.howto-cols h3{font-size:11px;letter-spacing:.16em;color:#e5bd88;padding-bottom:9px;border-bottom:1px solid #7f9aa640;margin-bottom:14px}
+.howto-cols dl{display:grid;gap:11px}
+.howto-cols dl>div{display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:baseline}
+.howto-cols dt{font-size:11.5px;font-weight:800;color:#f2efe6;background:#263944;border:1px solid #6d8792;border-bottom-width:2px;border-radius:3px;padding:5px 7px;text-align:center}
+.howto-cols dd{font-size:12.5px;line-height:1.55;color:#c3d2d6;word-break:keep-all}
+#howto-go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:30px;background:#e5bd88;color:#13252b;
+  padding:16px;font-size:16px;font-weight:800;border-radius:3px;transition:background .2s}
+#howto-go:hover{background:#f6d8ad}
+#howto-go span{font-weight:400;font-size:20px}
+@media(max-width:700px){.howto-card{padding:24px 20px}.howto-cols{grid-template-columns:1fr;gap:22px}.howto-card h2{font-size:26px}.howto-cols dl>div{grid-template-columns:92px 1fr}}
+
+/* Messenger pile-up. The point is the pile, so cards stack and crowd rather than
+   queueing politely: each one lands slightly offset and the stack shoves upward. */
+.intro-alerts{position:absolute;top:96px;right:36px;z-index:3;width:min(330px,42vw);display:flex;flex-direction:column;align-items:flex-end;gap:7px;pointer-events:none}
+.intro-alert{width:100%;background:#12212cf2;border:1px solid #74909b66;border-left:3px solid #e5bd88;border-radius:3px;padding:10px 13px;box-shadow:0 12px 34px #0007;animation:alert-in .26s cubic-bezier(.2,1.2,.4,1) both;transform-origin:right center}
+.intro-alert b{display:block;font-size:10.5px;letter-spacing:.06em;color:#e5bd88;font-weight:700}
+.intro-alert span{display:block;font-size:12.5px;line-height:1.5;color:#e7eef0;margin-top:3px;word-break:keep-all}
+.intro-alert.urgent{border-left-color:#ef8f74}.intro-alert.urgent b{color:#ef8f74}
+.intro-alert.leaving{animation:alert-out .3s ease-in forwards}
+@keyframes alert-in{from{opacity:0;transform:translateX(26px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes alert-out{to{opacity:0;transform:translateX(18px) scale(.97)}}
+/* When they arrive in a flood the whole screen flinches with each wave. */
+.intro.flooded .intro-canvas{animation:flood-shake .5s ease-out}
+@keyframes flood-shake{0%,100%{transform:none}20%{transform:translate(-3px,2px)}45%{transform:translate(3px,-2px)}70%{transform:translate(-2px,-1px)}}
+@media(max-width:700px){.intro-alerts{top:auto;bottom:210px;right:20px;left:20px;width:auto}.intro-alert span{font-size:11.5px}}
+@media(prefers-reduced-motion:reduce){.intro-alert{animation:none}.intro.flooded .intro-canvas{animation:none}}

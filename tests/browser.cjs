@@ -22,7 +22,19 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
  });
  await page.route('**/game-audio.js',async route=>{const response=await route.fetch();const body=(await response.text()).replace('})(window);',`const qaEvents=[];const qaEvent=root.OfficeAudio.event;root.OfficeAudio.event=(...args)=>{qaEvents.push(args[0]);return qaEvent(...args);};root.__audioQA=()=>({events:[...qaEvents],context:ctx?.state||'none',muted});})(window);`);await route.fulfill({response,body});});
  async function lock(){await page.locator('#pointer-hint').click();await page.waitForFunction(()=>__qa.snapshot().mouseLocked && __qa.snapshot().elapsedGame>0);}
- await page.goto('http://127.0.0.1:8080');await page.locator('#intro-player-name').fill('테스트사원');await page.locator('#intro-begin').click();await page.locator('#intro-skip').click();await page.locator('#card-five').click();
+ await page.goto('http://127.0.0.1:8080');
+ // Opening: start, read the text, open the lookup, then the controls overview.
+ await page.locator('#intro-begin').click();
+ await page.locator('#howto-go').waitFor({state:'visible',timeout:10000});
+ await page.locator('#howto-go').click();await page.waitForTimeout(1400);
+ for(let i=0;i<4;i++){await page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE',bubbles:true})));await page.waitForTimeout(420);}
+ // The lookup lives on the laptop screen; the offscreen field only captures keystrokes.
+ await page.locator('#intro-player-name').fill('테스트사원');
+ await page.evaluate(()=>document.getElementById('intro-player-name').dispatchEvent(new Event('input',{bubbles:true})));
+ await page.waitForTimeout(250);
+ await page.evaluate(()=>document.getElementById('intro-entry').requestSubmit());
+ await page.waitForTimeout(3600);
+ await page.locator('#intro-skip').click();await page.locator('#card-five').click();
  async function option(cat,val){await page.locator(`[data-cat="${cat}"]`).click();await page.locator(`[data-val="${val}"]`).click();}
  await option('hair','comb');await option('outfit','suit');await option('face','smug');await option('skin','fair');await option('prop','paper');
  await page.waitForTimeout(700);await page.screenshot({path:path.join(output,'adult-final.png')});

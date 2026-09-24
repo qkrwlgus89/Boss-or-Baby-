@@ -316,17 +316,64 @@
     <div class="intro-menu" id="intro-menu">
       <div class="menu-brand">HANMAEUM COMPANY <span>AFTER HOURS</span></div>
       <div class="menu-title"><p>퇴근하지 못한 하루가, 꿈에서 다시 시작된다.</p><h1>팀장님이<br><em>온다</em><span class="menu-title-dot">.</span></h1><div class="menu-en">BOSS OR BABY</div>
-        <form class="menu-entry" id="intro-entry" autocomplete="off">
-          <label for="intro-player-name">합격자 이름</label>
-          <div class="menu-name-row"><input id="intro-player-name" name="playerName" type="text" maxlength="12" placeholder="이름을 입력하세요" aria-describedby="intro-name-help" autocomplete="name"><button id="intro-begin" type="submit" disabled>시작하기 <span>↗</span></button></div>
-          <small id="intro-name-help">입력한 이름은 합격 메일과 사원증에 표시됩니다.</small>
-        </form>
+        <button class="menu-start" id="intro-begin" type="button">시작하기 <span aria-hidden="true">↗</span></button>
       </div>
       <div class="menu-footer"><span>WASD 이동 &nbsp; / &nbsp; 마우스 시점 &nbsp; / &nbsp; E 상호작용</span><span>PC · 키보드와 마우스로 플레이</span></div>
+    </div>
+    <div class="intro-howto" id="intro-howto">
+      <div class="howto-card">
+        <span class="howto-kicker">시작하기 전에</span>
+        <h2>조작법</h2>
+        <p class="howto-lead">한 번만 훑어보세요. 게임 중에도 화면 아래에 계속 표시됩니다.</p>
+        <div class="howto-cols">
+          <section>
+            <h3>프롤로그</h3>
+            <dl>
+              <div><dt>마우스</dt><dd>둘러보기 (화면을 클릭하거나 드래그)</dd></div>
+              <div><dt>W A S D</dt><dd>걸어서 이동</dd></div>
+              <div><dt>E</dt><dd>눈앞의 대상과 상호작용</dd></div>
+              <div><dt>R</dt><dd>자세히 보기</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3>도망칠 때</h3>
+            <dl>
+              <div><dt>W A S D</dt><dd>이동 · W는 언제나 바라보는 방향</dd></div>
+              <div><dt>Shift</dt><dd>질주 (체력을 씁니다)</dd></div>
+              <div><dt>Space</dt><dd>점프 · 책상 위로 올라타기</dd></div>
+              <div><dt>좌클릭 / F</dt><dd>커피 쏟기 · 3초간 멈춤</dd></div>
+              <div><dt>Q</dt><dd>사장님 호출 · 게이지가 다 차면</dd></div>
+              <div><dt>Esc / M</dt><dd>일시정지 / 소리 끄기</dd></div>
+            </dl>
+          </section>
+        </div>
+        <button id="howto-go" type="button">확인했습니다, 시작 <span>↗</span></button>
+      </div>
     </div>
     <header class="intro-top"><div><div id="intro-kicker"></div><p id="intro-objective"></p></div><div class="intro-top-actions"><button id="intro-sound" aria-pressed="false">소리 켜기</button><button id="intro-skip">이야기 건너뛰기</button></div></header>
     <div class="intro-crosshair" aria-hidden="true"></div>
     <div class="intro-action"><span id="intro-interaction">E</span><button id="btn-go-select"><span id="intro-next-label">메일 확인하기</span></button></div>
+    <div class="intro-phone" id="intro-phone" aria-hidden="true">
+      <div class="phone-body">
+        <div class="phone-notch"></div>
+        <div class="phone-status"><span>09:41</span><span class="phone-signal">LTE</span></div>
+        <div class="phone-clock"><strong>9:41</strong><span>4월 17일 월요일</span></div>
+        <div class="phone-sms">
+          <div class="phone-sms-head"><span class="phone-app">문자 메시지</span><span>지금</span></div>
+          <p><b>[한마음컴퍼니]</b> 2026 신입 공개채용 최종 합격자가 발표되었습니다. 채용 홈페이지에서 수험번호로 조회해 주세요.</p>
+        </div>
+      </div>
+    </div>
+    <!-- Keyboard capture only. The visible form is drawn on the laptop screen in 3D. -->
+    <form class="intro-lookup" id="intro-entry" autocomplete="off">
+      <label for="intro-player-name">이름</label>
+      <input id="intro-player-name" name="playerName" type="text" maxlength="12" autocomplete="name">
+      <output id="intro-exam-no">2026-0417</output>
+      <button id="lookup-go" type="submit" disabled>조회하기</button>
+      <small id="intro-name-help"></small>
+      <div id="intro-result" hidden><span id="intro-result-line"></span></div>
+    </form>
+    <div class="intro-alerts" id="intro-alerts" aria-hidden="true"></div>
     <div class="intro-subtitles" aria-live="polite" aria-atomic="true"><span id="intro-speaker"></span><p id="intro-dialogue"></p></div>
     <footer class="intro-controls"><span id="intro-movement">마우스 · 둘러보기</span><span id="intro-look">화면 클릭 · 시점 조작 / 드래그로 둘러보기</span><span>E · 상호작용 &nbsp; / &nbsp; R · 자세히 보기</span></footer>
     <div class="intro-curtain"></div>
@@ -352,8 +399,8 @@
       <button class="mode-card" id="card-endless" data-mode="endless">
         <span class="mode-emoji">🌙</span>
         <div class="mode-name">야근 모드</div>
-        <div class="mode-desc">시간 제한이 없습니다. 사장님을 부를 때마다 승진하고, 승진할 때마다 쫓는 사람이 늘어납니다. 어디까지 올라갈 수 있습니까.</div>
-        <span class="mode-tag">무한 · 승진 랭킹</span>
+        <div class="mode-desc">퇴근 시간이 없습니다. 잡힐 때까지 버티는 모드입니다. Q로 사장님을 부르면 사원에서 대리, 과장으로 승진하고 점수가 빨라집니다. 대신 쫓는 사람이 한 명씩 늘고 다시는 느려지지 않습니다. 안 부르면 점수가 안 오릅니다.</div>
+        <span class="mode-tag">무한 · 승진할수록 위험</span>
       </button>
     </div>
     <button class="intro-replay" id="intro-replay">프롤로그 다시 보기</button>

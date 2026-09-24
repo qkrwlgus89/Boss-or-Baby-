@@ -1,7 +1,7 @@
 /* Original in-world documents and surface art. Canvas assets stay crisp up close. */
 (function(root){
   'use strict';
-  function texture(T,kind,playerName='신입사원'){
+  function texture(T,kind,playerName='신입사원',opts){
     const name=String(playerName||'신입사원');
     const c=document.createElement('canvas');c.width=1600;c.height=1000;const p=c.getContext('2d');
     const rect=(x,y,w,h,color)=>{p.fillStyle=color;p.fillRect(x,y,w,h);};
@@ -52,6 +52,81 @@
       line(605);text('02   주요 지표',95,670,34,'#2e6866',800);
       for(let i=0;i<6;i++){const h=55+i*24;rect(100+i*125,907-h,75,h,i===5?'#b8895b':'#68918a');text(['월','화','수','목','금','야근'][i],118+i*125,948,23,'#82908b');}
       text('검토 의견',1000,680,31,'#a77555',700);text('“방향은 좋은데 다시 해보죠.”',1000,736,28);text('최종_v7_수정본.pdf',1000,920,25,'#85968f');
+    }else if(kind==='lookup'){
+      /* The recruitment site itself, drawn onto the laptop screen so the player types
+         into the world rather than into a dialog floating over it. */
+      const o=opts||{},examNo=o.examNo||'2026-0417',typed=String(o.typed||''),phase=o.phase||'form';
+      const FONT=s=>`${s}px "Apple SD Gothic Neo","Malgun Gothic",sans-serif`;
+      rect(0,0,1600,1000,'#eef2f0');
+      rect(0,0,1600,84,'#d9e0de');
+      p.fillStyle='#bcc7c4';[40,88,136].forEach(x=>{p.beginPath();p.arc(x,42,13,0,Math.PI*2);p.fill();});
+      rect(200,18,1160,48,'#fbfcfb');text('recruit.hanmaeum.example / result',234,51,25,'#7c8a88');
+      rect(0,84,1600,116,'#23575a');rect(60,120,36,36,'#d6e7de');text('HANMAEUM',114,150,29,'#eaf3ee',800);
+      ['채용 공고','전형 안내','문의'].forEach((s,i)=>text(s,1136+i*156,150,25,'#a9c9c2'));
+      text('채용 결과 조회',92,306,58,'#22403f',800);
+      text('2026 신입 공개채용  ·  지원자 본인 확인',95,358,28,'#75888a');
+      line(404,90,1418);
+      if(phase==='congrats'){
+        /* The site navigates to its own result page, the way a real one does. */
+        rect(0,200,1600,800,'#f4f7f5');
+        rect(0,200,1600,6,'#3f8e63');
+        text('합격자 발표',92,262,24,'#8aa39a',700);
+        p.font='800 '+FONT(82);
+        const head='축하합니다!';text(head,92,356,82,'#1f5a3f',800);
+        text('최종 합격하셨습니다.',95,424,44,'#2f6b4c',700);
+        rect(92,470,1416,3,'#dde4df');
+        text(`${o.name||typed} 님`,94,548,46,'#22403f',800);
+        p.font='800 '+FONT(46);const nw=p.measureText(`${o.name||typed} 님`).width;
+        text(`수험번호 ${examNo}  ·  경영지원팀`,110+nw,546,28,'#76898a');
+        rect(92,596,1416,238,'#e9f2ec');rect(92,596,8,238,'#3f8e63');
+        text('입사 안내',134,650,28,'#2c6b46',800);
+        [['첫 출근','9월 28일 월요일  오전 9시'],['장소','한마음컴퍼니 7층 안내데스크'],['준비물','신분증 · 통장 사본']]
+          .forEach(([k,v],i)=>{text(k,134,706+i*46,26,'#7e948a',700);text(v,300,706+i*46,28,'#2f4a43');});
+        rect(92,872,470,80,'#23575a');
+        p.font='800 '+FONT(28);const dl='합격자 안내문 내려받기';
+        text(dl,327-p.measureText(dl).width/2,924,28,'#ffffff',800);
+        text('문의  people@hanmaeum.example',600,924,25,'#8b9998');
+        // Confetti. Seeded so every repaint continues the same fall instead of resetting.
+        const t=Math.max(0,o.t||0),colors=['#e8b84b','#4f9d78','#d9695a','#5b8fc9','#e6e9e6','#c88ac0'];
+        let seed=7;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+        for(let i=0;i<90;i++){
+          const x0=rnd()*1600,fall=250+rnd()*430,delay=rnd()*1.2,sway=26+rnd()*74,spin=2+rnd()*7;
+          const w=9+rnd()*15,h=6+rnd()*11,life=t-delay;
+          if(life<=0)continue;
+          const y=-50+life*fall;if(y>1060)continue;
+          p.save();p.translate(x0+Math.sin(life*2.3+i)*sway,y);p.rotate(life*spin+i);
+          p.globalAlpha=Math.max(0,Math.min(1,(1060-y)/260));
+          p.fillStyle=colors[i%colors.length];p.fillRect(-w/2,-h/2,w,h);p.restore();
+        }
+        p.globalAlpha=1;
+        const t2=new T.CanvasTexture(c);t2.colorSpace=T.SRGBColorSpace;t2.anisotropy=8;return t2;
+      }
+      const fy=486;
+      text('수험번호',92,fy-20,26,'#7d8d8c',700);
+      rect(92,fy,520,86,'#e4e9e7');p.strokeStyle='#c3cdca';p.lineWidth=3;p.strokeRect(92,fy,520,86);
+      text(examNo,124,fy+58,38,'#5d7373',700);
+      text('이름',664,fy-20,26,'#7d8d8c',700);
+      rect(664,fy,844,86,'#ffffff');
+      p.strokeStyle=phase==='form'?'#c8912f':'#c3cdca';p.lineWidth=phase==='form'?5:3;p.strokeRect(664,fy,844,86);
+      if(typed)text(typed,696,fy+58,38,'#22403f',700);
+      else text('지원할 때 쓴 이름',696,fy+58,33,'#a7b3b1');
+      if(phase==='form'&&o.caret){
+        p.font='700 '+FONT(38);
+        rect(698+(typed?p.measureText(typed).width:0),fy+20,4,48,'#2c6b6a');
+      }
+      const by=630,ready=phase==='form'&&typed,label=phase==='checking'?'조회 중…':phase==='result'?'조회 완료':'조회하기';
+      rect(92,by,1416,96,phase==='result'?'#4b7c66':ready?'#23575a':'#a6b5b3');
+      p.font='800 '+FONT(34);text(label,800-p.measureText(label).width/2,by+62,34,'#ffffff',800);
+      if(phase==='checking'){rect(92,by+88,1416,8,'#1b4547');rect(92,by+88,Math.round(1416*(o.progress||.4)),8,'#8fd0bd');}
+      if(phase==='result'){
+        rect(92,772,1416,152,'#e6f3ea');rect(92,772,9,152,'#3f8e63');
+        text('최종 합격',134,842,50,'#2c6b46',800);
+        text(`${o.name||typed} · 수험번호 ${examNo}`,134,894,28,'#5c7a69');
+      }else{
+        text('· 수험번호는 안내 문자에 적힌 번호입니다.',94,812,26,'#8b9998');
+        text('· 지원서에 쓴 이름과 같아야 조회됩니다.',94,860,26,'#8b9998');
+        if(phase==='form')text(typed?'입력 후 Enter':'키보드로 이름을 입력하세요',94,932,27,'#b07f37',700);
+      }
     }else if(kind==='phone'){
       rect(0,0,1600,1000,'#b4c6af');text('HANMAEUM  /  OFFICE LINE',94,145,52,'#3d5947',700);line(198);text('001',91,495,250,'#304b3b',600);text('사장실',94,703,100,'#36503f',700);text('내선 연결 대기',97,861,57,'#5b735d');
     }

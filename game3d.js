@@ -533,7 +533,7 @@
       const pool = fresh.length ? fresh : speaker.dialogue;
       text = pool[Math.floor(Math.random()*pool.length)];
     }
-    OfficeAudio.event('message');
+    OfficeAudio.event('chatter');
     const head = headPoint(speaker.mesh);
     const ndc = head.clone().project(camera);
     // A little inside the edges, so a speaker half off screen reads as off screen.

@@ -3,17 +3,27 @@
 (function(root){
   'use strict';
   const CHAPTERS=[
-    {place:'내 방 · 월요일 09:41',objective:'노트북의 받은메일함을 확인하세요',action:'메일함 새로고침',camera:[0,1.38,1.25],target:[0,1.22,-.18],interact:[0,1.24,-.18],seated:true,lines:[['나','합격 발표일인데… 아직 새 메일은 없네.'],['메일 알림','새 메일 1건이 도착했습니다.'],['나','한마음컴퍼니… 최종 합격? 진짜?'],['나','작은 회사지만, 드디어 나도 출근한다.']]},
-    {place:'한마음컴퍼니 · 첫 출근 09:00',objective:'안내 데스크로 걸어가 사원증을 받으세요',action:'사원증 받기',camera:[0,1.65,4.8],target:[0,1.5,0],interact:[0,1.43,.65],bounds:[-2.4,2.4,1.15,5.3],lines:[['인사 담당자','{name}님, 오신 걸 환영해요. 사원증은 앞에 준비해 뒀어요.'],['인사 담당자','우리 회사는 한 사람이 정말 중요하거든요.'],['나','작지만 함께 성장하는 회사… 괜찮은 시작 같았다.']]},
-    {place:'업무 구역 · 10:15',objective:'팀장님들 앞으로 가서 첫 업무를 받으세요',action:'업무 받기',camera:[0,1.65,3.3],target:[0,1.5,-1.5],interact:[0,1.2,-.3],bounds:[-2.4,2.4,.9,4.3],lines:[['전략팀장','{name} 씨, 오늘부터 제 보고서 좀 맡아줘요.'],['운영팀장','회의록도요. 아, 기획팀 건도 같이.'],['나','팀장님이 다섯… 그런데 일할 사람은 나 하나잖아?']]},
-    {place:'내 자리 · 5일째 야근 / 23:47',objective:'끝나지 않는 메일을 확인하세요',action:'잠깐 눈 붙이기',camera:[0,1.38,1.25],target:[0,1.2,-.2],interact:[0,1.24,-.18],seated:true,lines:[['메신저 · 총괄팀장','{name}님 없으면 회사가 안 돌아가. 이것만 하고 퇴근해.'],['나','보고서, 회의록, 내 일도 아닌 일까지.'],['나','커피도 다 식었네. 딱 5분만…']]},
-    {place:'… · 03:12',objective:'책상 앞에서 정신을 차리세요',action:'자리에서 일어나기',camera:[0,1.30,1.25],target:[0,1.17,-.18],interact:[0,1.24,-.18],seated:true,lines:[['나','…얼마나 잔 거지?'],['나','불은 꺼졌는데, 왜 아직 메신저 소리가 나?'],['어딘가에서','어디 가? 너 없으면 안 된다니까.']]},
-    {place:'같은 회사, 다른 밤',objective:'복도 끝에서 다가오는 사람들을 확인하세요',action:'한 걸음 물러서기',camera:[0,1.65,3.7],target:[0,1.4,-3],interact:[0,1.4,-.8],range:6,bounds:[-2,2,2,5],lines:[['팀장님들','퇴근? 이거 누가 다 해!'],['나','왜 다들 나한테 달려오는 거야?'],['나','꿈이다. 그럼… 이번에는 내가 시켜도 되잖아.']]},
-    {place:'내 자리 · 꿈속 인사 시스템',objective:'책상 위 내선 전화로 사장님을 부르세요',action:'사장님 호출하기',camera:[0,1.50,1.45],target:[.5,1.02,-.05],interact:[.75,1.01,.15],seated:true,lines:[['나','팀장님 위에는… 사장님이 있지.'],['나','지시는 위로 돌려보내고, 나는 여기서 살아남는다.'],['꿈속 사내 방송','야근 모드: 사장님 호출 시 승진. 직급이 오를수록 추격 인원 증가.']]}
+    {place:'내 방 · 월요일 09:41',objective:'발표를 기다리는 중입니다',action:'메일함 새로고침',camera:[0,1.38,1.25],target:[0,1.22,-.18],interact:[0,1.24,-.18],seated:true,lines:[
+      ['나','오늘 발표라더니, 아무것도 없네.'],
+      ['나','새로고침만 몇 번째야.'],
+      ['문자 메시지','[한마음컴퍼니] 2026 신입 공개채용 최종 합격자가 발표되었습니다.'],
+      ['나','홈페이지에서 조회하라고? 수험번호는… 여기 있네.'],
+      ['나','…진짜 됐네. 진짜로.'],
+      ['나','나 이제 출근한다.']]},
+    {place:'한마음컴퍼니 · 첫 출근 09:00',objective:'안내 데스크로 걸어가 사원증을 받으세요',action:'사원증 받기',camera:[0,1.65,4.8],target:[0,1.5,0],interact:[0,1.43,.65],bounds:[-2.4,2.4,1.15,5.3],lines:[['인사 담당자','{name}님이시죠? 어서 오세요. 사원증 여기 있어요.'],['인사 담당자','우리는 규모가 작아서 한 사람 한 사람이 진짜 중요해요.'],['나','그 말이 그렇게 무서운 뜻인 줄은 몰랐다.']]},
+    {place:'업무 구역 · 10:15',objective:'팀장님들 앞으로 가서 첫 업무를 받으세요',action:'업무 받기',camera:[0,1.65,3.3],target:[0,1.5,-1.5],interact:[0,1.2,-.3],bounds:[-2.4,2.4,.9,4.3],lines:[['전략팀장','{name} 씨, 이 보고서 오늘부터 맡아줘요.'],['운영팀장','회의록도. 아 참, 기획팀 건도 같이 봐줘요.'],['나','팀장님은 다섯인데, 왜 받는 사람은 나 하나지?']]},
+    {place:'내 자리 · 5일째 야근 / 23:47',objective:'쏟아지는 메시지를 확인하세요',action:'잠깐 눈 붙이기',camera:[0,1.38,1.25],target:[0,1.2,-.2],interact:[0,1.24,-.18],seated:true,lines:[['총괄팀장','{name}님 없으면 회사가 안 돌아가요. 이것만 하고 가요.'],['나','내 일은 언제 하지.'],['나','커피 다 식었네. 진짜 딱 5분만.']]},
+    {place:'… · 03:12',objective:'책상 앞에서 정신을 차리세요',action:'자리에서 일어나기',camera:[0,1.30,1.25],target:[0,1.17,-.18],interact:[0,1.24,-.18],seated:true,lines:[['나','…나 얼마나 잔 거야?'],['나','불도 다 꺼졌는데. 알림은 왜 계속 울려.'],['어딘가에서','어디 가. 너 없으면 안 된다니까.']]},
+    {place:'같은 회사, 다른 밤',objective:'복도 끝에서 다가오는 사람들을 확인하세요',action:'한 걸음 물러서기',camera:[0,1.65,3.7],target:[0,1.4,-3],interact:[0,1.4,-.8],range:6,bounds:[-2,2,2,5],lines:[['팀장님들','퇴근? 이건 그럼 누가 해!'],['나','왜 다섯이 한꺼번에 달려와.'],['나','…꿈이네. 꿈이면 도망쳐도 되잖아.']]},
+    {place:'내 자리 · 꿈속의 사내 전화',objective:'책상 위 내선 전화로 사장님을 부르세요',action:'사장님 호출하기',camera:[0,1.50,1.45],target:[.5,1.02,-.05],interact:[.75,1.01,.15],seated:true,lines:[['나','도망만 쳐서는 안 끝나. 뭐라도 있어야 하는데.'],['나','…있다. 팀장님이 무서워하는 사람.'],['나','사장님을 부르면, 저 사람들도 나처럼 뛰겠지.'],['꿈속 사내 방송','이제부터 야근입니다. 퇴근 시간은 없습니다.'],['꿈속 사내 방송','사장님을 부를 때마다 승진하고, 쫓는 사람이 한 명씩 늘어납니다.']]}
   ];
   let active=false,index=0,busy=false,transitionTimer=0,raf=0,finishCallback,menuMode=false;
   let renderer,scene,camera,key,fill,groups=[],actors=[],floaters=[],interactionObjects={},environmentTarget,documentSurfaces=[],artTextures={};
-  let last=0,time=0,chapterTime=0,yaw=0,pitch=0,dragging=false,keys={},motion,ready=false,lineIndex=-1,inspect=false,audioContext=null,audioGain=null,sound=false;
+  let last=0,time=0,chapterTime=0,yaw=0,pitch=0,dragging=false,keys={},motion,ready=false,lineIndex=-1,inspect=false,sound=false;
+  // Menu parallax: the room leans with the cursor, which is what makes a title screen
+   // feel built rather than rendered. Kept separate from gameplay yaw/pitch.
+  let menuBase=null,pointX=0,pointY=0,leanX=0,leanY=0,menuTime=0,restEye=null;
+  const SCREEN_VIEW={eye:new THREE.Vector3(0,1.30,1.08),at:new THREE.Vector3(0,1.243,-.22),fov:33};
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const el=id=>document.getElementById(id);
   root.OfficePlayer=root.OfficePlayer||{name:''};
@@ -122,37 +132,109 @@
     const c=CHAPTERS[index];el('screen-title').dataset.chapter=index;
     el('intro-kicker').textContent=c.place;el('intro-objective').textContent=c.objective;
     el('intro-next-label').textContent=c.action;el('intro-movement').textContent=c.seated?'마우스 · 둘러보기':'WASD · 이동 / 마우스 · 둘러보기';
-    el('screen-title').classList.remove('inspecting');chapterTime=0;lineIndex=-1;inspect=false;ready=false;keys={};motion=FPSMovement.create();
-    if(scene){groups.forEach((g,i)=>g.visible=i===index);camera.fov=65;camera.updateProjectionMatrix();camera.position.set(...c.camera);camera.rotation.order='YXZ';camera.lookAt(...c.target);yaw=camera.rotation.y;pitch=camera.rotation.x;key.color.set(index<3?0xffd69b:index===3?0x8ab2dd:0x91a9f7);key.intensity=index<3?2.2:index===3?.65:.45;fill.intensity=index<3?1.5:.48;applyEnvironment(index>=3);}
+    el('screen-title').classList.remove('inspecting','flooded');chapterTime=0;lineIndex=-1;inspect=false;ready=false;keys={};motion=FPSMovement.create();
+    clearAlerts();if(index!==0)showPhone(false);if(sound)OfficeAudio.room(index<3?'bedroom':index<6?'night':'office');
+    if(scene){groups.forEach((g,i)=>g.visible=i===index);camera.fov=65;camera.updateProjectionMatrix();camera.position.set(...c.camera);restEye=new THREE.Vector3(...c.camera);camera.rotation.order='YXZ';camera.lookAt(...c.target);yaw=camera.rotation.y;pitch=camera.rotation.x;key.color.set(index<3?0xffd69b:index===3?0x8ab2dd:0x91a9f7);key.intensity=index<3?2.2:index===3?.65:.45;fill.intensity=index<3?1.5:.48;applyEnvironment(index>=3);}
     updateDialogue();
   }
   function updateDialogue(){
     const lines=CHAPTERS[index].lines,n=Math.min(lines.length-1,Math.floor(chapterTime/4.2));if(n===lineIndex)return;lineIndex=n;
     el('intro-speaker').textContent=lines[n][0]==='나'?playerName():lines[n][0];el('intro-dialogue').textContent=withName(lines[n][1]);
-    if((index===0&&n===1)||(index===4&&n===1))messengerTone();
-    if(index===0){const surface=documentSurfaces.find(s=>s.chapter===0);const kind=n===0?'mailList':n===1?'offerArrived':'offer';if(surface&&surface.kind!==kind){surface.kind=kind;surface.mesh.material.map=artTextures[kind];surface.mesh.material.needsUpdate=true;}el('intro-objective').textContent=n===0?'노트북의 받은메일함을 확인하세요':n===1?'방금 도착한 메일을 확인하세요':'합격 메일 내용을 확인하세요';el('intro-next-label').textContent=n===0?'메일함 새로고침':n===1?'합격 메일 열기':'내용 확인';}
+    // Sound follows the beat, not the chapter: one mail at the start, a wall of
+    // messages on the fifth night, and the same wall again when nobody should be awake.
+    if(index===0&&n===1)messengerTone();
+    if(index===2&&n===0)cue('paper');
+    if(index===3&&n===0)flood('night');
+    if(index===4&&n===1)flood('dawn');
+    if(index===5&&n===0)cue('tantrum');
+    if(index===6&&n===2)cue('phone');
+    if(index===0){
+      // Before the lookup the laptop shows a plain inbox; after it, the result page
+      // stays on screen. There is no acceptance mail any more.
+      if(!openingDone){
+        const surface=documentSurfaces.find(s=>s.chapter===0);
+        if(surface&&surface.kind!=='mailList'){surface.kind='mailList';surface.mesh.material.map=artTextures.mailList;surface.mesh.material.needsUpdate=true;}
+      }
+      showPhone(n===2||n===3);
+      if(n===2&&sound)OfficeAudio.event('message');
+      el('intro-objective').textContent=
+        n<2?'발표를 기다리는 중입니다'
+        :n===2?'문자를 확인하세요'
+        :n===3?'노트북으로 합격자 조회를 여세요'
+        :'합격 페이지를 확인하세요';
+      el('intro-next-label').textContent=
+        n<2?'메일함 새로고침':n===2?'문자 읽기':n===3?'합격자 조회 열기':'계속';
+    }
   }
   function updateInteraction(){
     if(busy)return;const c=CHAPTERS[index];let near=true,aimed=true;
     if(camera){const target=new THREE.Vector3(...c.interact),delta=target.sub(camera.position);near=delta.length()<(c.range||2.2);aimed=camera.getWorldDirection(new THREE.Vector3()).dot(delta.normalize())>.84;}
     ready=near&&aimed;el('btn-go-select').disabled=!ready;
-    el('intro-interaction').textContent=ready?'E':near?'대상을 바라보세요':'가까이 다가가세요';
+    // Say what to do, not just that something is wrong.
+    el('intro-interaction').textContent=ready?'E'
+      :near?(c.seated?'◎ 화면 가운데로 대상을 맞추세요':'◎ 대상을 바라보세요')
+      :'▲ 더 가까이 다가가세요  ·  WASD';
     el('screen-title').classList.toggle('can-interact',ready);
   }
-  function tone(){if(!sound||!audioContext)return;const t=audioContext.currentTime,o=audioContext.createOscillator(),gain=audioContext.createGain();o.type='sine';o.frequency.setValueAtTime(index<4?392:261.63,t);gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(.04,t+.04);gain.gain.exponentialRampToValueAtTime(.0001,t+.7);o.connect(gain);gain.connect(audioContext.destination);o.start(t);o.stop(t+.8);}
-  function messengerTone(){
-    if(!sound||!audioContext)return;
-    const start=audioContext.currentTime;
-    // Bright paired notes: recognisable as a messenger notification, not dialogue audio.
-    [0,.115].forEach((delay,n)=>{const o=audioContext.createOscillator(),gain=audioContext.createGain(),t=start+delay;o.type='sine';o.frequency.setValueAtTime(n?1046.5:783.99,t);gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.075,t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+.17);o.connect(gain);gain.connect(audioContext.destination);o.start(t);o.stop(t+.19);});
+  /* The prologue shares the game's synth so both halves sound like one product. */
+  function cue(name,detail){if(sound)OfficeAudio.event(name,detail);}
+  function tone(){cue(index<4?'paper':'door');}
+  function messengerTone(){cue('message');}
+
+  /* ---- messenger pile-up ----
+     One notification is a detail. Twenty arriving on top of each other is the joke,
+     and it has to be seen as well as heard, so each cue drops a card on screen. */
+  const FLOOD={
+    night:[['총괄팀장','내일 아침 회의 자료도 부탁해요',1],['전략팀장','보고서 초안 아직인가요?',0],
+      ['운영팀장','회의록 오늘 안에 정리 가능하죠?',0],['기획팀장','이거 {name}님이 제일 잘하잖아요',0],
+      ['재무팀장','정산표 양식 좀 바꿔주세요',0],['총괄팀장','확인했으면 답 좀',1],
+      ['전략팀장','급한 건 아닌데 오늘까지요',0],['운영팀장','자는 건 아니죠?',1]],
+    dawn:[['총괄팀장','어디 가요',1],['전략팀장','아직 회사죠?',1],['운영팀장','{name}님',1],
+      ['기획팀장','{name}님?',1],['재무팀장','{name}님!!',1],['총괄팀장','대답 좀 해봐요',1],
+      ['알 수 없음','너 없으면 안 된다니까',1],['알 수 없음','어디 가',1],
+      ['알 수 없음','어디 가',1],['알 수 없음','어디 가',1]],
+  };
+  let floodTimers=[];
+  function clearAlerts(){floodTimers.forEach(clearTimeout);floodTimers=[];const host=el('intro-alerts');if(host)host.innerHTML='';}
+  function dropAlert(from,text,urgent){
+    const host=el('intro-alerts');if(!host)return;
+    const card=document.createElement('div');card.className='intro-alert'+(urgent?' urgent':'');
+    const who=document.createElement('b');who.textContent=from;
+    const body=document.createElement('span');body.textContent=withName(text);
+    card.append(who,body);host.appendChild(card);
+    // Keep the newest few; older ones slide out so the stack never covers the room.
+    while(host.children.length>6){const old=host.firstChild;old.classList.add('leaving');const dying=old;setTimeout(()=>dying.remove(),300);host.removeChild(old);}
+    floodTimers.push(setTimeout(()=>{card.classList.add('leaving');setTimeout(()=>card.remove(),300);},6500));
   }
+  /* Paced so each message lands on its own: one card, one notification sound, far
+     enough apart to read. A wall that arrives all at once reads as a single event. */
+  const FLOOD_GAP=430;
+  function flood(kind){
+    const list=FLOOD[kind];if(!list)return;
+    clearAlerts();
+    if(sound)OfficeAudio.event('messageSwell');
+    const stage=el('screen-title');
+    list.forEach(([from,text,urgent],i)=>{
+      const delay=reduced.matches?0:i*FLOOD_GAP+Math.random()*90;
+      floodTimers.push(setTimeout(()=>{
+        dropAlert(from,text,urgent);
+        if(sound)OfficeAudio.event('message');
+        if(!reduced.matches&&i%4===0){stage.classList.remove('flooded');void stage.offsetWidth;stage.classList.add('flooded');}
+      },delay));
+    });
+  }
+
   function toggleSound(){
-    if(!active)return;sound=!sound;el('intro-sound').setAttribute('aria-pressed',String(sound));el('intro-sound').textContent=sound?'소리 끄기':'소리 켜기';
-    if(sound){try{const Audio=root.AudioContext||root.webkitAudioContext;if(!audioContext){audioContext=new Audio();audioGain=audioContext.createGain();audioGain.gain.value=.014;audioGain.connect(audioContext.destination);for(const f of [130.81,196]){const o=audioContext.createOscillator();o.type='sine';o.frequency.value=f;o.connect(audioGain);o.start();}}audioContext.resume().catch(()=>{});tone();}catch(_){sound=false;el('intro-sound').textContent='소리 사용 불가';el('intro-sound').setAttribute('aria-pressed','false');}}
-    else if(audioContext)audioContext.suspend().catch(()=>{});
+    if(!active)return;
+    sound=!OfficeAudio.setMuted(sound);   // button reflects the shared mute state
+    el('intro-sound').setAttribute('aria-pressed',String(sound));
+    el('intro-sound').textContent=sound?'소리 끄기':'소리 켜기';
+    if(sound){OfficeAudio.resume();OfficeAudio.room(index<3?'bedroom':'night');}
   }
   function move(){
     if(!active||busy||menuMode||!ready)return;
+    // The result has to be looked up; the story cannot step over it.
+    if(index===0&&lineIndex===3&&!openingDone){openLookup();return;}
     // Give the short dialogue beats a chance to finish; E can advance each beat.
     if(lineIndex<CHAPTERS[index].lines.length-1){chapterTime=(lineIndex+1)*4.2;updateDialogue();return;}
     busy=true;keys={};el('btn-go-select').disabled=true;el('screen-title').classList.add('changing');
@@ -164,11 +246,38 @@
   }
   function frame(now){
     if(!active)return;const dt=Math.min(.04,(now-last)/1000||0);last=now;
+    if(menuMode&&camera&&menuBase&&!document.hidden){
+      menuTime+=dt;
+      const ease=reduced.matches?1:1-Math.exp(-dt*3.4);
+      leanX+=(pointX-leanX)*ease;leanY+=(pointY-leanY)*ease;
+      // A slow breath underneath, so the room is alive even with the mouse still.
+      const breath=reduced.matches?0:Math.sin(menuTime*.42)*.03;
+      camera.position.set(menuBase.x+leanX*.62,menuBase.y-leanY*.34+breath,menuBase.z+Math.abs(leanX)*.10);
+      camera.lookAt(menuBase.tx+leanX*.26,menuBase.ty-leanY*.20+breath*.5,menuBase.tz);
+      el('intro-menu').style.setProperty('--lean-x',(leanX*-9).toFixed(2)+'px');
+      el('intro-menu').style.setProperty('--lean-y',(leanY*-5).toFixed(2)+'px');
+    }
+    if(screenFocus&&camera&&!document.hidden){
+      // Push in on the laptop the way R inspects, but aimed and automatic.
+      const ease=reduced.matches?1:1-Math.exp(-dt*3.4);
+      camera.position.lerp(SCREEN_VIEW.eye,ease);
+      camera.lookAt(SCREEN_VIEW.at);
+      yaw=camera.rotation.y;pitch=camera.rotation.x;
+      camera.fov=reduced.matches?SCREEN_VIEW.fov:THREE.MathUtils.lerp(camera.fov,SCREEN_VIEW.fov,ease);
+      camera.updateProjectionMatrix();
+      caretClock+=dt;if(lookupPhase==='form'&&caretClock>.53){caretClock=0;caretOn=!caretOn;paintLookup();}
+    }
+    if(lookupPhase==='congrats'&&partyTime<5.2&&!document.hidden&&!reduced.matches){
+      partyTime+=dt;partyClock+=dt;
+      if(partyClock>1/15){partyClock=0;paintLookup();}   // 15fps is plenty for falling paper
+    }
     if(!document.hidden&&!busy&&!menuMode){time+=dt;if(index!==0)chapterTime+=dt;updateDialogue();
       if(renderer){
         const c=CHAPTERS[index];
         if(!c.seated){const step=FPSMovement.step(motion,{forward:(keys.KeyW?1:0)-(keys.KeyS?1:0),right:(keys.KeyD?1:0)-(keys.KeyA?1:0)},yaw,dt);const b=c.bounds;camera.position.x=THREE.MathUtils.clamp(camera.position.x+step.x*.42,b[0],b[1]);camera.position.z=THREE.MathUtils.clamp(camera.position.z+step.z*.42,b[2],b[3]);}
         camera.rotation.set(pitch,yaw,0,'YXZ');const fov=inspect?38:65;camera.fov=reduced.matches?fov:THREE.MathUtils.lerp(camera.fov,fov,1-Math.exp(-dt*9));camera.updateProjectionMatrix();
+        // Seated chapters drift back to their framing after a focus push.
+        if(restEye&&CHAPTERS[index].seated)camera.position.lerp(restEye,reduced.matches?1:1-Math.exp(-dt*3));
         if(!reduced.matches){actors.forEach(a=>{if(a.chapter!==index)return;if(index===5)a.mesh.position.z=Math.min(-.8-Math.abs(a.seed-2)*.4,-3-Math.abs(a.seed-2)*.7+chapterTime*.24);animateBossMesh(a.mesh,time,index===5?1.5:0,false);});floaters.forEach(f=>{if(f.chapter!==index)return;f.mesh.position.y=f.base.y+Math.sin(time*.7+f.seed)*.1;});}
       }updateInteraction();
     }
@@ -184,20 +293,124 @@
     keys={};dragging=false;if(renderer&&document.pointerLockElement===renderer.domElement)document.exitPointerLock();cancelAnimationFrame(raf);clearTimeout(transitionTimer);window.removeEventListener('resize',resize);
     if(scene){const geometries=new Set(),materials=new Set(),textures=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.skeleton)o.skeleton.dispose();if(o.shadow)o.shadow.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));});materials.forEach(m=>{for(const v of Object.values(m))if(v&&v.isTexture)textures.add(v);m.dispose();});textures.forEach(t=>t.dispose());geometries.forEach(g=>g.dispose());}
     if(environmentTarget){environmentTarget.dispose();environmentTarget=null;}if(renderer){renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();}renderer=scene=camera=null;groups=[];actors=[];floaters=[];interactionObjects={};documentSurfaces=[];artTextures={};
-    if(audioContext){audioContext.close().catch(()=>{});audioContext=null;audioGain=null;}sound=false;
+    clearAlerts();if(sound)OfficeAudio.stop();sound=false;
   }
   function finish(){if(!active)return;active=false;busy=false;dispose();el('screen-title').classList.remove('changing');el('btn-go-select').disabled=false;finishCallback();}
   function start(onFinish,showMenu=false){
-    if(active)dispose();active=true;menuMode=showMenu;index=0;busy=false;time=0;last=0;finishCallback=onFinish;el('screen-title').classList.remove('changing');el('btn-go-select').disabled=false;el('intro-look').textContent='화면 클릭 · 시점 조작 / 드래그로 둘러보기';el('intro-sound').textContent='소리 켜기';el('intro-sound').setAttribute('aria-pressed','false');
+    if(active)dispose();el('screen-title').classList.remove('with-howto');resetLookup();active=true;menuMode=showMenu;index=0;busy=false;time=0;last=0;finishCallback=onFinish;el('screen-title').classList.remove('changing');el('btn-go-select').disabled=false;el('intro-begin').disabled=false;el('intro-look').textContent='화면 클릭 · 시점 조작 / 드래그로 둘러보기';sound=true;OfficeAudio.setMuted(false);el('intro-sound').textContent='소리 끄기';el('intro-sound').setAttribute('aria-pressed','true');
     try{buildScene();}catch(error){console.warn('Prologue visual unavailable; story remains readable.',error);dispose();el('intro-canvas').textContent='';}
-    updateChapter();el('screen-title').classList.toggle('with-menu',menuMode);if(menuMode){const input=el('intro-player-name');input.value=cleanName(root.OfficePlayer.name);input.dispatchEvent(new Event('input'));requestAnimationFrame(()=>input.focus());if(camera){groups.forEach((g,i)=>g.visible=i===3);camera.position.set(2.5,1.7,3.2);camera.lookAt(0,1.1,-.2);key.intensity=.6;fill.intensity=.5;applyEnvironment(true);}}window.addEventListener('resize',resize);raf=requestAnimationFrame(frame);
+    updateChapter();el('screen-title').classList.toggle('with-menu',menuMode);if(menuMode){requestAnimationFrame(()=>el('intro-begin').focus());if(camera){groups.forEach((g,i)=>g.visible=i===3);camera.position.set(2.5,1.7,3.2);camera.lookAt(0,1.1,-.2);key.intensity=.6;fill.intensity=.5;applyEnvironment(true);
+      menuBase={x:2.5,y:1.7,z:3.2,tx:0,ty:1.1,tz:-.2};pointX=pointY=leanX=leanY=menuTime=0;}}window.addEventListener('resize',resize);raf=requestAnimationFrame(frame);
   }
-  el('intro-player-name').addEventListener('input',e=>{const name=cleanName(e.target.value),valid=!!name;el('intro-begin').disabled=!valid;e.target.setAttribute('aria-invalid',String(!valid));el('intro-name-help').textContent=valid?`${name}님의 합격 메일과 사원증이 준비됩니다.`:'이름을 입력하면 합격 메일이 도착합니다.';});
-  el('intro-entry').addEventListener('submit',e=>{e.preventDefault();if(!active||!menuMode||busy)return;const input=el('intro-player-name'),name=cleanName(input.value);if(!personalize(name)){input.setAttribute('aria-invalid','true');input.focus();return;}input.value=name;busy=true;el('intro-begin').disabled=true;el('screen-title').classList.add('changing');transitionTimer=setTimeout(()=>{menuMode=false;el('screen-title').classList.remove('with-menu');updateChapter();el('screen-title').classList.remove('changing');transitionTimer=setTimeout(()=>{busy=false;},reduced.matches?0:500);},reduced.matches?0:700);});
+  let pendingSubmit=false;
+  el('intro-player-name').addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    e.preventDefault();
+    // This Enter is spent committing the Hangul syllable; submit as soon as it lands.
+    if(e.isComposing||e.keyCode===229){pendingSubmit=true;return;}
+    submitLookup();
+  });
+  /* Name, then a single pass over the controls, then the story. The overview is its
+     own step so nobody starts chapter one still hunting for the interact key. */
+  function openHowTo(){
+    const stage=el('screen-title');
+    stage.classList.remove('with-menu');stage.classList.add('with-howto');
+    busy=true;requestAnimationFrame(()=>el('howto-go').focus());
+  }
+  function closeHowTo(){
+    const stage=el('screen-title');if(!stage.classList.contains('with-howto'))return;
+    stage.classList.remove('with-howto');stage.classList.add('changing');
+    if(sound)OfficeAudio.event('paper');
+    transitionTimer=setTimeout(()=>{
+      menuMode=false;updateChapter();stage.classList.remove('changing');
+      transitionTimer=setTimeout(()=>{busy=false;},reduced.matches?0:500);
+    },reduced.matches?0:600);
+  }
+  el('howto-go').addEventListener('click',closeHowTo);
+
+  /* The opening is scripted: wait, a text arrives on the phone, then you look your own
+     result up on the recruitment site. The site is painted onto the laptop screen and
+     the camera pushes in on it, so the typing happens in the world, not in a dialog. */
+  let openingDone=false,screenFocus=false,lookupPhase='form',caretOn=true,caretClock=0,partyTime=0,partyClock=0;
+  const EXAM_NO='2026-0417';
+  function showPhone(on){el('screen-title').classList.toggle('with-phone',!!on);}
+  function typedName(){return cleanName(el('intro-player-name').value);}
+
+  /* Repaint the laptop with the current field contents. */
+  function paintLookup(){
+    const surface=documentSurfaces.find(s=>s.chapter===0);if(!surface||!scene)return;
+    const next=IntroArt.texture(THREE,'lookup',playerName(),
+      {examNo:EXAM_NO,typed:typedName(),phase:lookupPhase,caret:screenFocus&&caretOn,name:typedName(),t:partyTime});
+    const old=surface.mesh.material.map;
+    surface.mesh.material.map=next;surface.mesh.material.needsUpdate=true;
+    surface.kind='lookup';
+    if(old&&old!==artTextures.mailList&&old!==artTextures.offer&&old!==artTextures.offerArrived&&old!==artTextures.inbox)old.dispose();
+  }
+  function openLookup(){
+    showPhone(false);screenFocus=true;lookupPhase='form';caretOn=true;caretClock=0;
+    el('screen-title').classList.add('typing');
+    busy=true;paintLookup();
+    el('lookup-go').disabled=!typedName();
+    requestAnimationFrame(()=>el('intro-player-name').focus());
+  }
+  function closeLookup(){screenFocus=false;el('screen-title').classList.remove('typing');el('intro-player-name').blur();}
+  function resetLookup(){
+    openingDone=false;screenFocus=false;lookupPhase='form';pendingSubmit=false;partyTime=partyClock=0;showPhone(false);
+    el('screen-title').classList.remove('typing');
+    el('intro-player-name').value='';el('lookup-go').disabled=true;
+    el('intro-result').hidden=true;
+    el('screen-title').classList.remove('with-lookup');
+  }
+
+  // Start shows the controls once, then the story opens on the waiting-for-results beat.
+  el('intro-begin').addEventListener('click',()=>{
+    if(!active||!menuMode||busy)return;
+    el('intro-begin').disabled=true;
+    if(sound){OfficeAudio.resume();OfficeAudio.room('bedroom');}
+    openHowTo();
+  });
+
+  el('intro-player-name').addEventListener('input',()=>{
+    if(!screenFocus)return;
+    el('lookup-go').disabled=!typedName();caretOn=true;caretClock=0;paintLookup();
+  });
+  el('intro-player-name').addEventListener('compositionend',()=>{
+    if(!screenFocus)return;
+    el('lookup-go').disabled=!typedName();paintLookup();
+    if(pendingSubmit){pendingSubmit=false;submitLookup();}
+  });
+
+  function submitLookup(){
+    if(!active||openingDone||!screenFocus||lookupPhase!=='form')return;
+    const name=typedName();
+    if(!personalize(name)){caretOn=true;paintLookup();el('intro-player-name').focus();return;}
+    lookupPhase='checking';paintLookup();
+    if(sound)OfficeAudio.event('typing',6);
+    transitionTimer=setTimeout(()=>{
+      lookupPhase='congrats';partyTime=0;partyClock=0;paintLookup();
+      el('intro-result').hidden=false;
+      el('intro-result-line').textContent=`${name} · 수험번호 ${EXAM_NO}`;
+      if(sound){OfficeAudio.event('promotion');OfficeAudio.burst(5);}
+      transitionTimer=setTimeout(()=>{
+        openingDone=true;closeLookup();busy=false;
+        chapterTime=4*4.2;updateDialogue();          // "…진짜 됐네."
+      },reduced.matches?0:2600);
+    },reduced.matches?0:1200);
+  }
+  el('intro-entry').addEventListener('submit',e=>{e.preventDefault();submitLookup();});
+
   el('btn-go-select').addEventListener('click',move);el('intro-skip').addEventListener('click',finish);el('intro-sound').addEventListener('click',toggleSound);
-  el('intro-canvas').addEventListener('click',()=>{if(active&&!menuMode&&renderer&&document.pointerLockElement!==renderer.domElement){const result=renderer.domElement.requestPointerLock();if(result&&result.catch)result.catch(()=>{});}});
+  el('intro-canvas').addEventListener('click',()=>{
+    if(screenFocus){if(typedName())submitLookup();else el('intro-player-name').focus();return;}
+    if(active&&!menuMode&&renderer&&document.pointerLockElement!==renderer.domElement){const result=renderer.domElement.requestPointerLock();if(result&&result.catch)result.catch(()=>{});}});
   el('intro-canvas').addEventListener('pointerdown',()=>{dragging=true;});
   window.addEventListener('pointerup',()=>{dragging=false;});
+  window.addEventListener('pointermove',e=>{
+    if(!active||!menuMode)return;
+    pointX=Math.max(-1,Math.min(1,(e.clientX/innerWidth-.5)*2));
+    pointY=Math.max(-1,Math.min(1,(e.clientY/innerHeight-.5)*2));
+  });
+  window.addEventListener('pointerleave',()=>{pointX=pointY=0;});
   document.addEventListener('mousemove',e=>{if(!active||busy||menuMode||!camera||(!dragging&&document.pointerLockElement!==renderer.domElement))return;yaw-=e.movementX*.002;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.002,-1.15,1.15);});
   document.addEventListener('pointerlockchange',()=>{keys={};if(active)el('intro-look').textContent=document.pointerLockElement?'ESC · 마우스 해제':'화면 클릭 · 시점 조작 / 드래그로 둘러보기';});
   window.addEventListener('blur',()=>{keys={};dragging=false;});

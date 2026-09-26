@@ -290,6 +290,7 @@
 
   // 야근 모드 state. Reinforcements arrive at whichever of these is furthest from the player.
   let rank = OfficeRank.create();
+  let floorProgress = OfficeFloors.create(0), interactQueued=false;
   const isEndless = ()=> state.mode === 'endless';
   const REINFORCE_POINTS = [{x:0,z:2},{x:0,z:-52},{x:-6.5,z:-46},{x:6.5,z:-50},{x:-6.5,z:-7},{x:8.6,z:-24}];
   let elapsedGame = 0, runPhase = 0;
@@ -351,7 +352,7 @@
     mouseLocked = document.pointerLockElement === canvasWrapEl();
     if(gameActive)OfficeAudio.setPaused(!mouseLocked);
     keys = {}; motion.right = motion.forward = 0;
-    jumpQueued = abilityQueued = coffeeQueued = false;
+    jumpQueued = abilityQueued = coffeeQueued = interactQueued = false;
     document.getElementById('pointer-hint').classList.toggle('hidden', mouseLocked);
   });
 
@@ -379,6 +380,7 @@
     if (gameActive && mouseLocked && !e.repeat){
       if (e.code === 'Space') jumpQueued = true;
       if (e.code === 'KeyQ') abilityQueued = true;
+      if (e.code === 'KeyE') interactQueued = true;
       if (e.code === 'KeyF') coffeeQueued = true;
       if (e.code === 'KeyM') updateGameSoundButton(OfficeAudio.toggle());
     }
@@ -405,12 +407,12 @@
   // 이때 키가 "눌린 상태"로 영구히 남으면 의도치 않게 계속 이동하거나 다른 키와
   // 충돌해 방향이 이상하게 느껴질 수 있으므로, 포커스를 잃는 즉시 전부 해제한다.
   window.addEventListener('blur', ()=>{
-    keys = {}; motion.right = motion.forward = 0;
+    keys = {}; interactQueued=false; motion.right = motion.forward = 0;
     if (gameActive && document.pointerLockElement) document.exitPointerLock();
   });
   document.addEventListener('visibilitychange', ()=>{
     if (document.hidden){
-      keys = {}; jumpQueued = abilityQueued = coffeeQueued = false;
+      keys = {}; jumpQueued = abilityQueued = coffeeQueued = interactQueued = false;
       motion.right = motion.forward = 0;
       if (gameActive && document.pointerLockElement) document.exitPointerLock();
     }
@@ -442,7 +444,7 @@
       mesh.position.set(0, 0, -14);
       scene.add(mesh);
       bosses.push({
-        mesh, baseSpeed: 3.8, speed:3.8, catchDist: 0.85,
+        mesh, baseSpeed: 4.8, speed:4.8, catchDist: 0.85,
         lastBubbleAt: 0, dialogue: DIALOGUE3D.baby, stun: 0, rageMult: 1, spot: null, label: '5살 팀장님',
       });
     } else {
@@ -450,8 +452,11 @@
       const startZ = [-10, -18, -28, -38, -50];
       const startX = [-.8, .8, -.7, .7, 0];
       // 야근 모드 opens with a smaller crew and grows one per promotion.
-      const count = isEndless() ? OfficeRank.chasers(0) : state.fiveAvatars.length;
-      for (let i=0; i<count; i++) addChaser(startX[i % 5], startZ[i % 5]);
+      const count = isEndless() ? OfficeRank.chasers(rank.level) : state.fiveAvatars.length;
+      for (let i=0; i<count; i++) {
+        const p={x:isEndless()?(i%2?1.5:-1.5):startX[i%5],z:startZ[i%5]};
+        if(navigation.clear(p,p))addChaser(p.x,p.z);else reinforce();
+      }
     }
   }
 
@@ -462,7 +467,7 @@
     mesh.position.set(x, 0, z);
     scene.add(mesh);
     bosses.push({
-      mesh, baseSpeed: 2.6 + Math.random()*0.4, speed:2.6, catchDist: 0.85,
+      mesh, baseSpeed: isEndless()?3.9:4.4, speed:3.9, catchDist: 0.85,
       lastBubbleAt: 0, dialogue: DIALOGUE3D.five, stun: 0,
       rageMult: bosses.length ? bosses[0].rageMult : 1,   // latecomers match the current pace
       spot: null, label: `팀장님 ${i+1}`,
@@ -867,18 +872,8 @@
         spawnSpeechBubble(b, summonLine(b,'rage'));
       });
       OfficeAudio.event('speedUp');
-      lastAudiblePace=Math.max(lastAudiblePace,(bosses[0]?.rageMult||1)*(isEndless()?OfficeRank.ramp(elapsedGame/1000):1+Math.min(.3,elapsedGame/60000)));
-      if (isEndless()){
-        OfficeRank.promote(rank, elapsedGame/1000);
-        const joined = reinforce();
-        joined.rageMult = bosses[0] ? bosses[0].rageMult : 1;
-        spawnSpeechBubble(joined, '제가 새로 맡게 됐습니다');
-        const chip = document.getElementById('rank-chip');
-        chip.classList.remove('promoted'); void chip.offsetWidth; chip.classList.add('promoted');
-        showCutIn('인사 발령', OfficeRank.title(rank.level) + ' 승진',
-          `점수 ${OfficeRank.rate(rank.level)}/초 · 추격 ${bosses.length}명`);
-        OfficeAudio.event('promotion');
-      } else {
+      lastAudiblePace=Math.max(lastAudiblePace,(bosses[0]?.rageMult||1)*(isEndless()?OfficeFloors.pressure(floorProgress):1+Math.min(.3,elapsedGame/60000)));
+      {
         const pct = Math.round((bosses[0] ? bosses[0].rageMult : 1) * 100);
         showCutIn(isBabyMode() ? '상황 종료' : '회의 종료', '팀장님 복귀',
           `이제부터 끝까지 ${pct}% 속도입니다`);
@@ -978,7 +973,7 @@
         // early game gives the player room to learn the map without being rushed
         // Timed modes plateau at +30%. 야근 모드 never plateaus, so a run that refuses to
         // promote still ends instead of jogging in circles forever.
-        const rampMult = isEndless() ? OfficeRank.ramp(elapsedSec) : 1 + Math.min(0.3, elapsedSec/60);
+        const rampMult = isEndless() ? OfficeFloors.pressure(floorProgress) : 1 + Math.min(0.3, elapsedSec/60);
         const feet=playerRig.y-PLAYER_HEIGHT,onFurniture=OfficeTraversal.support(playerRig.x,playerRig.z,WORLD.colliders,feet+.03)>.3;
         const reachClear=onFurniture?!CoffeeAbility.blocked({x:boss.mesh.position.x,y:boss.mesh.userData.headY,z:boss.mesh.position.z},playerRig,WORLD.colliders):navigation.clear(boss.mesh.position,playerRig,0);
         if(!(boss.stun>0) && feet<1.45 && reachClear)minDist=Math.min(minDist,dist-(onFurniture?.55:0));
@@ -1014,6 +1009,7 @@
       }
 
       // Animate from actual displacement so blocked pursuers do not run in place.
+      if(isEndless()&&OfficeFloors.confined(floorProgress)&&Math.abs(boss.mesh.position.x)<1.9)boss.mesh.position.z=Math.max(-52.85,boss.mesh.position.z);
       animateBossMesh(boss.mesh, elapsedSec, Math.hypot(boss.mesh.position.x-oldX,boss.mesh.position.z-oldZ)/Math.max(dt,.001), frozen);
       boss.mesh.position.y = 0;
 
@@ -1034,20 +1030,30 @@
     document.getElementById('gauge-fill').style.width = pct + '%';
     document.getElementById('stamina-fill').style.width = (motion.stamina*100)+'%';
     document.getElementById('stamina-label').textContent = motion.exhausted ? '숨 고르는 중' : '퇴근 체력';
+    const floorPrompt=document.getElementById('floor-interaction');floorPrompt.hidden=true;
     if (isEndless()){
-      document.getElementById('rank-title').textContent = OfficeRank.title(rank.level);
+      document.getElementById('rank-title').textContent = `${rank.level+1}F · ${OfficeRank.title(rank.level)}`;
       document.getElementById('rank-score').textContent = Math.floor(rank.score).toLocaleString('ko-KR') + ' 점';
+      document.getElementById('floor-name').textContent=OfficeFloors.layout(rank.level).name;
+      const t=OfficeFloors.target(floorProgress,playerRig),distance=Math.hypot(t.x-playerRig.x,t.z-playerRig.z);
+      const angle=Math.atan2(t.x-playerRig.x,-(t.z-playerRig.z))+yaw;
+      const direction=Math.cos(angle)>.7?'앞':Math.cos(angle)<-.7?'뒤':Math.sin(angle)>0?'오른쪽':'왼쪽';
+      const objective=floorProgress.phase==='riding'?'상승 중…':floorProgress.phase==='waiting'?`안전 탑승 · ${Math.ceil(floorProgress.wait)}초 후 자동 출발`:t.id==='lift'?'결재 완료 · E 엘리베이터 탑승':`결재 ${floorProgress.stamps.filter(Boolean).length}/2 · ${t.id+1}차 결재 담당자`;
+      const canSubmit=distance<=1.8&&Math.abs(playerRig.y-PLAYER_HEIGHT)<=.5&&navigation.clear(playerRig,t,0);
+      if(canSubmit&&floorProgress.phase==='work'){floorPrompt.hidden=false;floorPrompt.textContent=t.id==='lift'?'[E] 엘리베이터 탑승':`[E] ${t.id+1}차 담당자에게 서류 제출`;}
+      document.getElementById('floor-objective').textContent=OfficeFloors.confined(floorProgress)?`${objective}\n문이 닫혔습니다 · 내부 이동/둘러보기 가능`:`${objective}\n${canSubmit?(t.id==='lift'?'E · 엘리베이터 탑승':'E · 담당자에게 서류 제출'):`${direction} ${Math.ceil(distance)}m`} · ${Math.max(0,Math.ceil(OfficeFloors.LIMIT-floorProgress.time))}초 후 추가 추격`;
     }
     const mult = bosses.reduce((m,b)=> Math.max(m, b.rageMult || 1), 1);
-    const pace=mult*(isEndless()?OfficeRank.ramp(elapsedGame/1000):1+Math.min(.3,elapsedGame/60000));if(pace>=lastAudiblePace+.09){lastAudiblePace=pace;OfficeAudio.event('speedUp');}
+    const pace=mult*(isEndless()?OfficeFloors.pressure(floorProgress):1+Math.min(.3,elapsedGame/60000));if(pace>=lastAudiblePace+.09){lastAudiblePace=pace;OfficeAudio.event('speedUp');}
     document.getElementById('danger-label').textContent =
       OfficeSummon.active(summon)
         ? (summon.mode === 'baby' ? '사장님이 대신 쫓기는 중 — 지금 도망치세요' : '전원 회의 중 — 지금 도망치세요')
-      : isEndless() && mult > 1 ? `추격 ${bosses.length}명 · 속도 ${Math.round(mult*100)}% — 계속 오릅니다`
+      : isEndless() && floorProgress.time>=OfficeFloors.LIMIT ? `추가 추격 ${floorProgress.reinforcements}차 · 점수 적립 중단 — 엘리베이터로 이동하세요`
+      : isEndless() && mult > 1 ? `추격 ${bosses.length}명 · 속도 ${Math.round(pace*100)}% — 엘리베이터로 이동하세요`
       : mult > 1 ? `팀장님 속도 ${Math.round(mult*100)}% — 끝까지 이대로입니다`
       : minDist < 3 ? (OfficeSummon.ready(summon) ? '가까워요! Q로 사장님을 부르세요' : '가까워요! 좌클릭으로 커피를 쏟으세요')
       : minDist < 7 ? '팀장님 접근 중'
-      : isEndless() ? (OfficeSummon.ready(summon) ? 'Q를 누르면 승진합니다' : '버틸수록 게이지가 찹니다')
+      : isEndless() ? '결재 2곳 → 엘리베이터 → 승진 · E 상호작용'
       : '오늘의 목표: 끝까지 버티기';
     // Endless counts up; the timed modes count down.
     document.getElementById('timer-label').textContent = isEndless()
@@ -1057,8 +1063,50 @@
   }
 
   /* ---- main game flow ---- */
+  function enterOfficeFloor(){
+    document.getElementById('screen-game').classList.remove('elevator-riding');
+    clearDoors();despawnChief();clearChatter();
+    const uses=summon.uses,charge=summon.charge;summon=OfficeSummon.create();summon.uses=uses;summon.charge=charge;
+    floorProgress=OfficeFloors.create(rank.level);interactQueued=false;
+    configureOfficeFloor(scene,THREE,rank.level);
+    navigation=OfficeNavigation.create(WORLD.bounds,WORLD.colliders);navigationClock=0;
+    splashes.forEach(p=>{scene.remove(p.mesh);disposeMesh(p.mesh);});splashes.length=0;
+    playerRig={x:0,z:2.5,y:PLAYER_HEIGHT};motion=FPSMovement.create();verticalVelocity=0;isGrounded=true;yaw=pitch=0;
+    keys={};jumpQueued=abilityQueued=coffeeQueued=false;
+    camera.position.set(0,PLAYER_HEIGHT,2.5);camera.rotation.set(0,0,0,'YXZ');
+    spawnBosses();navigation.update(playerRig);lastMinDist=Infinity;lastAudiblePace=1;
+    updateOfficeFloorVisuals(floorProgress);
+  }
+  function updateFloor(dt){
+    const event=OfficeFloors.tick(floorProgress,dt);
+    if(event==='arrived'){
+      OfficeRank.promote(rank,elapsedGame/1000);rank.score+=OfficeRank.rate(rank.level)*10;
+      enterOfficeFloor();OfficeAudio.event('promotion');
+      showCutIn(`${rank.level+1}F · 인사 발령`,OfficeRank.title(rank.level)+' 승진',`${OfficeFloors.layout(rank.level).name} · 추격 ${bosses.length}명`);
+      return;
+    }
+    if(event==='reinforce'){
+      // Avoid adding a new actor to an already seated meeting.
+      if(!OfficeSummon.active(summon)){reinforce();OfficeAudio.event('speedUp');}
+      else floorProgress.reinforcements--;
+    }
+    if(event==='boarded'){OfficeAudio.event('door');document.getElementById('screen-game').classList.add('elevator-riding');showCutIn('상승 중',`${rank.level+2}F로 이동`,'다음 층에는 추격자가 한 명 더 기다립니다');}
+    if(interactQueued){
+      const t=OfficeFloors.target(floorProgress,playerRig);
+      const result=navigation.clear(playerRig,t,0)?OfficeFloors.interact(floorProgress,playerRig):null;
+      if(result==='stamp')showCutIn(`${t.id+1}차 담당자 · 결재 완료`,'확인했습니다. 다음으로 가세요.',floorProgress.stamps.every(Boolean)?'결재 2/2 완료 · 복도 끝 엘리베이터에 E로 탑승하세요':'결재 1/2 완료 · 다른 결재 담당자를 찾아가세요');
+      if(result)OfficeAudio.event(result==='stamp'?'ready':'door');
+      if(result==='called'){
+        playerRig={x:0,z:-54.4,y:PLAYER_HEIGHT};motion=FPSMovement.create();verticalVelocity=0;isGrounded=true;keys={};jumpQueued=abilityQueued=coffeeQueued=false;
+        camera.position.set(0,PLAYER_HEIGHT,-54.4);yaw=Math.PI;pitch=0;camera.rotation.set(0,yaw,0,'YXZ');
+        showCutIn('안전 탑승','4초 후 자동 출발','투명문 너머로 팀장님을 확인하세요');
+      }
+    }
+    interactQueued=false;updateOfficeFloorVisuals(floorProgress);
+  }
   function startGame3D(){
     showScreen('screen-game');
+    document.getElementById('screen-game').classList.remove('elevator-riding');
     document.getElementById('flash-red').classList.remove('go');
     document.getElementById('pointer-hint').classList.remove('hidden');
     document.getElementById('hud-label').textContent = state.mode==='baby' ? '추격 거리' : '포위 거리';
@@ -1066,13 +1114,13 @@
     const rankChip = document.getElementById('rank-chip');
     rankChip.hidden = !isEndless();
     rankChip.classList.remove('promoted');
-    document.getElementById('tap-instruction').textContent = 'WASD / 방향키 이동 · 마우스 시점 · Shift 질주 · Space 책상 넘기 · 좌클릭/F 커피 · Q 사장님 호출 · ESC 일시정지';
+    document.getElementById('tap-instruction').textContent = 'WASD 이동 · 마우스 시점 · Shift 질주 · Space 점프 · F/클릭 커피 · Q 사장님 · E 결재/엘리베이터 · ESC 일시정지';
 
     if (!scene) initThree();
     setWorldTheme(scene,state.mode);
     OfficeAudio.start({night:isEndless()});updateGameSoundButton();
     spawnPlayer();
-    spawnBosses();
+    if(isEndless())enterOfficeFloor();else {configureOfficeFloor(scene,THREE);navigation=OfficeNavigation.create(WORLD.bounds,WORLD.colliders);spawnBosses();}
     lastMinDist = Infinity;
     navigation.update(playerRig);navigationClock=0;
     updateHUD(Infinity, state.mode === 'baby' ? 42 : 50);
@@ -1080,7 +1128,7 @@
     card.classList.remove('ready','firing');
     document.getElementById('ability-sub').textContent =
       state.mode === 'baby' ? '5살 팀장님은 사장님을 모릅니다'
-      : isEndless() ? '부를 때마다 승진, 부를 때마다 한 명 더'
+      : isEndless() ? '회의로 시간을 벌고 엘리베이터로 승진'
       : '바라보는 회의실로 전원 소집';
     document.getElementById('ability-status').textContent = Math.floor(summon.charge*100)+'%';
     document.getElementById('ult-fill').style.width = (summon.charge*100)+'%';
@@ -1114,13 +1162,29 @@
       const elapsedSec = elapsed/1000;
       const remainingSec = (gameDuration - elapsed)/1000;
 
+      if(isEndless()&&floorProgress.phase==='riding'){
+        updateFloor(dt);updateHUD(Infinity,remainingSec);renderer.render(scene,camera);
+        gameRafId=requestAnimationFrame(frame);return;
+      }
+
+      if(isEndless()&&floorProgress.phase==='waiting'){
+        jumpQueued=abilityQueued=coffeeQueued=false;
+        updatePlayerMovement(dt);OfficeFloors.confine(playerRig);verticalVelocity=0;isGrounded=true;
+        camera.position.set(playerRig.x,PLAYER_HEIGHT,playerRig.z);camera.rotation.set(pitch,yaw,0,'YXZ');
+        updateBosses(dt,elapsedSec);updateSpeechBubbles();updateFloor(dt);updateHUD(Infinity,remainingSec);
+        document.getElementById('screen-game').style.filter='';renderer.render(scene,camera);
+        gameRafId=requestAnimationFrame(frame);return;
+      }
+
       // View, movement, ability and pursuit advance together only during active play.
       updatePlayerMovement(dt);
       updateWorldLighting(playerRig.x,playerRig.z);
       updateSummon(dt, lastMinDist, elapsedSec);
       updateCoffee(dt);
+      // Boarding wins over a same-frame distance check at the doorway.
+      if(isEndless()&&interactQueued){updateFloor(0);if(OfficeFloors.confined(floorProgress)){gameRafId=requestAnimationFrame(frame);return;}}
 
-      if (isEndless()) OfficeRank.gain(rank, dt);
+      if (isEndless()&&floorProgress.time<OfficeFloors.LIMIT) OfficeRank.gain(rank, dt);
 
       const minDist = updateBosses(dt, elapsedSec);
       lastMinDist = minDist;
@@ -1136,6 +1200,7 @@
         endGame3D(false, elapsed);
         return;
       }
+      if(isEndless())updateFloor(dt);else interactQueued=false;
       if (elapsed >= gameDuration){
         endGame3D(true, elapsed);
         return;
@@ -1181,13 +1246,14 @@
       tag.textContent = '야근 종료';
       title.textContent = OfficeRank.title(rank.level) + '에서 마감';
       desc.textContent = rank.level === 0
-        ? '한 번도 사장님을 부르지 않았습니다. 오래 버텼지만 사원은 사원입니다. 승진해야 점수가 붙습니다.'
+        ? '첫 층에서 마감했습니다. 결재 두 곳을 받은 뒤 엘리베이터를 호출하세요. Q와 커피로 탑승할 시간을 벌 수 있습니다.'
         : rank.level >= OfficeRank.TITLES.length-1
-          ? '더 올라갈 자리가 없습니다. 당신을 쫓던 사람들도 이제 당신 밑입니다.'
-          : `${calls}번 부르고 ${OfficeRank.title(rank.level)}까지 올라갔습니다. 한 계단 더 갔으면 어땠을까요.`;
+          ? `${rank.level+1}층까지 올라갔습니다. 회장 직급 이후에도 층과 추격 인원은 계속 늘어납니다.`
+          : `${rank.level+1}층, ${OfficeRank.title(rank.level)}까지 올라갔습니다. 사장님 호출 ${calls}회. 다음 층에 다시 도전해 보세요.`;
       stats.innerHTML = `
         <div class="stat-pill"><div class="num">${points}</div><div class="lab">점수</div></div>
         <div class="stat-pill"><div class="num">${OfficeRank.title(rank.level)}</div><div class="lab">최종 직급</div></div>
+        <div class="stat-pill"><div class="num">${rank.level+1}F</div><div class="lab">도달 층</div></div>
         <div class="stat-pill"><div class="num">${seconds}s</div><div class="lab">버틴 시간</div></div>
         <div class="stat-pill"><div class="num">${bosses.length}</div><div class="lab">마지막 추격 인원</div></div>
       `;

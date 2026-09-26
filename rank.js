@@ -1,12 +1,5 @@
-/* 야근 모드 scoring — the endless run's promotion ladder.
-
-   In the timed modes the 사장님 호출 is a cost you pay out of a fixed clock. Endless has
-   no clock, so the same mechanic is reframed: calling him is how you get promoted, and a
-   promotion is the only thing that makes points accrue fast. It also permanently adds a
-   pursuer and speeds the floor up, so climbing is what eventually kills you.
-
-   Without a single call the pursuers are slower than a walking player, so a run that never
-   promotes would never end. The uncapped time ramp is what closes that door. */
+/* Rank and scoring. Elevator arrival promotes; floors.js owns local pressure.
+   ramp() remains available for historical simulations, not live floor difficulty. */
 (function(root){
   'use strict';
   const TITLES = ['사원','대리','과장','차장','부장','이사','사장','회장'];

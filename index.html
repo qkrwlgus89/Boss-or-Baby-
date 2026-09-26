@@ -255,6 +255,11 @@
   .rank-chip strong{display:block;font-size:26px;line-height:1.15;margin-top:3px;text-shadow:0 2px 6px #000}
   .rank-chip em{display:block;font-style:normal;font-size:13px;font-weight:800;color:#ffd987;font-variant-numeric:tabular-nums}
   .rank-chip.promoted{animation:rank-up .7s ease-out}
+  #floor-objective{white-space:pre-line}
+  #floor-interaction{position:absolute;left:50%;top:58%;transform:translateX(-50%);z-index:300;padding:10px 18px;border:1px solid #a5eed0;border-radius:6px;background:#102d2ee8;color:#effff5;font-size:16px;font-weight:700;pointer-events:none;white-space:nowrap}
+  #screen-game.elevator-riding::after{content:'';position:absolute;inset:0;z-index:250;pointer-events:none;background:#091521;animation:elevator-travel .6s ease-in forwards}
+  @keyframes elevator-travel{0%{opacity:0}35%,100%{opacity:1}}
+  @media(prefers-reduced-motion:reduce){#screen-game.elevator-riding::after{animation:none;opacity:1}}
   @keyframes rank-up{0%{transform:scale(1)}25%{transform:scale(1.12);border-left-color:#ffd987}100%{transform:scale(1)}}
   /* Chatter. A line spoken by someone you can see floats over their head; a line from
      behind you drops into the subtitle rail instead, so running away never costs the joke. */
@@ -399,7 +404,7 @@
       <button class="mode-card" id="card-endless" data-mode="endless">
         <span class="mode-emoji">🌙</span>
         <div class="mode-name">야근 모드</div>
-        <div class="mode-desc">퇴근 시간이 없습니다. 잡힐 때까지 버티는 모드입니다. Q로 사장님을 부르면 사원에서 대리, 과장으로 승진하고 점수가 빨라집니다. 대신 쫓는 사람이 한 명씩 늘고 다시는 느려지지 않습니다. 안 부르면 점수가 안 오릅니다.</div>
+        <div class="mode-desc">두 곳에서 결재를 받고 엘리베이터를 타세요. 한 층 오를 때마다 승진하고 추격자가 한 명 늘어납니다. 층마다 통로가 바뀌고, 오래 머물면 지원 인력이 들어옵니다. Q로 회의를 열어 탑승할 시간을 버세요.</div>
         <span class="mode-tag">무한 · 승진할수록 위험</span>
       </button>
     </div>
@@ -432,6 +437,7 @@
     <button id="game-sound" type="button" aria-pressed="true">소리 켜짐 · M</button>
     <div class="vignette3d"></div>
     <div class="crosshair"></div>
+    <div id="floor-interaction" hidden></div>
     <div class="flash-red" id="flash-red"></div>
 
     <div class="hud-top3d">
@@ -445,7 +451,7 @@
     <div class="tap-instruction" id="tap-instruction">WASD 또는 방향키 이동 · Space 점프 · 클릭하면 마우스로 시점 회전 · Shift 스프린트 · R 시점 리셋</div>
 
     <div class="mission-chip"><span>OPERATION : 칼퇴</span><strong id="danger-label">오늘의 목표: 끝까지 버티기</strong></div>
-    <div class="rank-chip" id="rank-chip" hidden><span>현재 직급</span><strong id="rank-title">사원</strong><em id="rank-score">0</em></div>
+    <div class="rank-chip" id="rank-chip" hidden><span id="floor-name">현재 직급</span><strong id="rank-title">사원</strong><em id="rank-score">0</em><small id="floor-objective" style="display:block;max-width:260px;margin-top:8px;line-height:1.6;color:#e7eee9"></small></div>
     <div class="runner-card"><span class="runner-icon">↗</span><div><small><span id="runner-name">신입사원</span> · 생존 담당</small><strong id="stamina-label">퇴근 체력</strong><div class="stamina-track"><div id="stamina-fill"></div></div></div><b>SHIFT</b></div>
 <div class="coffee-card"><b id="coffee-status">쏟기 준비</b><strong>커피 쏟기</strong><small>좌클릭 / F · 전방 4.8m · 3초 정지</small><div class="coffee-track"><div id="coffee-fill"></div></div></div>
     <div class="ability-card" id="ability-card"><kbd>Q</kbd><div><strong>사장님 호출</strong><small id="ability-sub">바라보는 회의실로 전원 소집</small><div class="ult-track"><div id="ult-fill"></div></div></div><b id="ability-status">25%</b></div>
@@ -489,6 +495,7 @@
 <script src="coffee.js"></script>
 <script src="summon.js"></script>
 <script src="rank.js"></script>
+<script src="floors.js"></script>
 <script src="game-audio.js"></script>
 <script src="intro-art.js"></script>
 <script src="intro.js"></script>

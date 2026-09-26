@@ -258,32 +258,17 @@ const full=mode.startsWith('full')||mode==='revision',gallery=mode.includes('gal
   await page.waitForFunction(()=>__qa.snapshot().summon.phase!=='idle',{},{timeout:6000});
   await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:14000});
   run=await page.evaluate(()=>__qa.snapshot());
-  assert.equal(run.rank.level,1,'calling the 사장님 is a promotion');
-  assert.equal(run.rank.title,'대리');
-  assert.equal(run.bosses.length,3,'and puts one more person on the floor');
-  assert.ok(run.bosses.every(b=>b.rageMult>1),'including the newcomer, everyone speeds up');
-  const rate0=(await page.evaluate(()=>__qa.snapshot())).rank.score;
-  await page.waitForTimeout(600);
-  const rate1=(await page.evaluate(()=>__qa.snapshot())).rank.score;
-  assert.ok(rate1-rate0 > (after1-before1)*2,'a promotion pays far better than camping');
-  // Endless rage has no ceiling: enough promotions must pass the timed-mode cap.
-  for(let i=0;i<5;i++){
-    await page.evaluate(()=>{__qa.charge(1);__qa.place(0,-24);__qa.aim(Math.PI);});
-    await page.keyboard.press('q');
-    await page.waitForFunction(()=>__qa.snapshot().summon.phase!=='idle',{},{timeout:6000});
-    await page.waitForFunction(()=>__qa.snapshot().summon.phase==='idle',{},{timeout:14000});
-  }
-  run=await page.evaluate(()=>__qa.snapshot());
-  assert.equal(run.rank.level,6);
-  assert.equal(run.rank.title,'사장','six promotions reaches the top of the ladder');
-  assert.equal(run.bosses.length,8);
-  assert.ok(run.bosses[0].rageMult>2.2,'endless is uncapped, unlike the timed modes');
+  assert.equal(run.rank.level,0,'Q buys time but only the elevator promotes');
+  assert.equal(run.rank.title,'사원');
+  assert.equal(run.bosses.length,2,'Q does not add a promotion pursuer');
+  assert.ok(run.bosses.every(b=>b.rageMult>1),'meeting still increases pursuit speed');
+  // Elevator progression, layout reachability and overtime are covered by floors-browser.cjs.
   // Getting caught ends the run on the rank screen, not the survival one.
   await page.evaluate(()=>{__qa.place(0,0);for(let i=0;i<__qa.snapshot().bosses.length;i++)__qa.boss(i,0,-.3);});
   await page.locator('#screen-result.active').waitFor({timeout:30000});
-  assert.match(await page.locator('#result-title').textContent(),/사장에서 마감/);
+  assert.match(await page.locator('#result-title').textContent(),/사원에서 마감/);
   assert.match(await page.locator('#result-stats').textContent(),/점수/);
-  console.log('PASS 야근 모드: no clock, promotion ladder, growing crew, uncapped pace, rank result');
+  console.log('PASS 야근 모드: no end timer, Q grants no rank or pursuer, meeting rage, rank result; elevator covered separately');
  }
  assert.deepEqual(errors,[]);assert.deepEqual(badResponses,[]);console.log('PASS no JS exceptions or HTTP errors');
  }finally{await browser.close();}

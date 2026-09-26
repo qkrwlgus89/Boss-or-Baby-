@@ -259,6 +259,74 @@ function updateWorldLighting(x,z){
   if(!WORLD.sun)return;
   WORLD.sun.position.set(x+24,7,z+9);WORLD.sun.target.position.set(x,0,z-8);
 }
+// Floor-specific architecture shares its dimensions with collision and navigation.
+let floorDecor=null,baseFloorColliders=null;
+function configureOfficeFloor(scene,T,level=null){
+  if(!baseFloorColliders)baseFloorColliders=WORLD.colliders.slice();
+  WORLD.colliders=baseFloorColliders.slice();
+  if(floorDecor){const geos=new Set(),mats=new Set(),textures=new Set();floorDecor.traverse(o=>{if(o.skeleton)o.skeleton.dispose();if(o.geometry)geos.add(o.geometry);if(o.material)mats.add(o.material);if(o.userData.approvalTextures)o.userData.approvalTextures.forEach(t=>textures.add(t));});geos.forEach(g=>g.dispose());mats.forEach(m=>{if(m.map)textures.add(m.map);m.dispose();});textures.forEach(t=>t.dispose());floorDecor.removeFromParent();}
+  floorDecor=null;WORLD.floorMarkers=[];WORLD.approvalNpcs=[];WORLD.liftDoors=[];
+  if(level===null)return;
+  floorDecor=new T.Group();scene.add(floorDecor);
+  const spec=OfficeFloors.layout(level),accent=new T.MeshStandardMaterial({color:spec.color,emissive:spec.color,emissiveIntensity:.35}),metal=new T.MeshStandardMaterial({color:0x465362,metalness:.65,roughness:.35}),cabinet=new T.MeshStandardMaterial({color:level%3===1?0x88918c:level%3===2?0x987951:0x6c8c88,roughness:.85});
+  function box(mat,x,y,z,w,h,d){const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=true;floorDecor.add(m);return m;}
+  function sign(text,x,y,z,w=2.5){const c=document.createElement('canvas');c.width=1024;c.height=256;const p=c.getContext('2d');p.fillStyle='#102331';p.fillRect(0,0,1024,256);p.fillStyle='#e4fff5';p.font='bold 64px sans-serif';p.textAlign='center';p.fillText(text,512,145);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const m=new T.Mesh(new T.PlaneGeometry(w,w/4),new T.MeshBasicMaterial({map:tex}));m.position.set(x,y,z);floorDecor.add(m);}
+  for(const [x,z,w,d] of spec.blocks){
+    box(cabinet,x,1.1,z,w,2.2,d);box(accent,x,2.23,z,w,.06,d);addCollider(x,z,w,d,2.26,false);
+    // Cabinet fronts and pulls give the route blockers a familiar office scale.
+    for(const side of [-1,1]){
+      box(metal,x,1.05,z+side*(d/2+.012),.025,2.03,.018);
+      for(const offset of [-.12,.12])box(metal,x+offset,1.12,z+side*(d/2+.04),.028,.23,.05);
+      if(level%3===1)for(let y=.35;y<2;y+=.4)box(metal,x,y,z+side*(d/2+.015),w*.86,.025,.025);
+    }
+    sign(level%3===1?'ARCHIVE':level%3===2?'EXECUTIVE':'OPERATIONS',x,1.85,z+d/2+.035,Math.min(w*.85,2.1));
+  }
+  const paper=new T.MeshStandardMaterial({color:0xfff4dc}),stampInk=new T.MeshStandardMaterial({color:0xbf5146});
+  function approvalLabel(i,done){
+    const c=document.createElement('canvas');c.width=1024;c.height=320;const p=c.getContext('2d');
+    p.fillStyle=done?'#214b46':'#f4f1e4';p.beginPath();p.roundRect(8,8,1008,284,28);p.fill();
+    p.beginPath();p.moveTo(475,292);p.lineTo(512,320);p.lineTo(549,292);p.fill();
+    p.textAlign='center';p.fillStyle=done?'#adf0ca':'#307164';p.font='bold 38px sans-serif';p.fillText(`${i+1}차 결재 담당 · 추격하지 않아요`,512,68);
+    p.fillStyle=done?'#ffffff':'#182e36';p.font='bold 52px sans-serif';p.fillText(done?'결재 완료! 수고하셨어요.':'이쪽으로 결재받으러 오세요!',512,153);
+    p.font='36px sans-serif';p.fillText(done?'다음 담당자 또는 엘리베이터로 가세요':'가까이 와서 E · 서류 제출',512,233);
+    const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;return tex;
+  }
+  spec.stops.forEach((s,i)=>{
+    const side=Math.sign(s.x),deskX=s.x+side*.78;
+    // A staffed approval counter faces the aisle. The interaction point stays in front.
+    box(cabinet,deskX,.45,s.z,.58,.9,1.2);box(paper,deskX,.925,s.z,.65,.05,1.28);addCollider(deskX,s.z,.58,1.2,.95,true);
+    box(paper,deskX,.968,s.z,.36,.025,.48);box(stampInk,deskX,.995,s.z+.34,.15,.07,.15);box(metal,deskX,1.07,s.z+.34,.065,.1,.065);
+    const approvedSeal=box(stampInk,deskX,.984,s.z,.17,.004,.13);approvedSeal.visible=false;
+    const npc=buildBossMesh({identity:'slim',skin:i?'tan':'fair',hair:i?'perm':'comb',outfit:'vest',face:'smug',prop:'paper'},T);
+    npc.position.set(s.x+side*.7,0,s.z-.95);npc.rotation.y=-side*Math.PI/2;floorDecor.add(npc);
+    addCollider(npc.position.x,npc.position.z,.4,.45,1.7,false);
+    const textures=[approvalLabel(i,false),approvalLabel(i,true)];
+    const bubble=new T.Sprite(new T.SpriteMaterial({map:textures[0],depthTest:true,depthWrite:false}));bubble.position.set(s.x,2.55,s.z);bubble.scale.set(3.1,.97,1);bubble.userData.approvalTextures=textures;floorDecor.add(bubble);
+    const marker=box(accent.clone(),s.x,.035,s.z,.16,.025,1.2);WORLD.floorMarkers.push(marker);
+    WORLD.approvalNpcs.push({mesh:npc,bubble,textures,approvedSeal,done:false});
+    animateBossMesh(npc,0,0,false);
+  });
+  for(const z of [-3,-22,-42]){box(accent,0,.028,z,.1,.025,2);sign(`${level+1}F · ${spec.name}`,0,2.65,z,3.2);}
+  box(metal,-1.5,1.5,-53.3,.12,3,.15);box(metal,1.5,1.5,-53.3,.12,3,.15);box(accent,0,3,-53.3,3.2,.08,.15);
+  // A lit cabin back masks the old exit artwork when the sliding doors open.
+  const cabin=new T.MeshStandardMaterial({color:0xa4b6be,roughness:.4,metalness:.25,emissive:0x48616e,emissiveIntensity:.3});
+  box(cabin,0,1.35,-55.55,2.8,2.7,.08);box(metal,0,.95,-55.48,2.5,.035,.035);box(accent,0,2.6,-55.45,2.4,.045,.04);
+  const glassDoor=new T.MeshPhysicalMaterial({color:0xc9eee9,transparent:true,opacity:.13,roughness:.08,metalness:0,depthWrite:false});
+  for(const side of [-1,1]){
+    const door=box(glassDoor,side*.7,1.35,-53.3,1.38,2.7,.035);door.castShadow=false;WORLD.liftDoors.push(door);
+    const sideWall=box(glassDoor,side*1.5,1.35,-54.4,.035,2.7,2.2);sideWall.castShadow=false;addCollider(side*1.5,-54.4,.035,2.2,2.7,false);
+  }
+  sign('↑ ELEVATOR · E',0,2.8,-53.15,2.7);
+  box(accent,0,.03,-54,2.8,.025,2);
+}
+function updateOfficeFloorVisuals(progress){
+  WORLD.approvalNpcs.forEach((npc,i)=>{
+    const done=progress.stamps[i];if(npc.done!==done){npc.bubble.material.map=npc.textures[Number(done)];npc.done=done;npc.approvedSeal.visible=done;}
+    animateBossMesh(npc.mesh,progress.time,0,false);
+  });
+  WORLD.floorMarkers.forEach((m,i)=>{m.material.color.setHex(progress.stamps[i]?0x647571:OfficeFloors.layout(progress.level).color);m.material.emissiveIntensity=progress.stamps[i]?0:.35;});
+  WORLD.liftDoors.forEach((m,i)=>{m.position.x=(i?1:-1)*(OfficeFloors.confined(progress)?.7:2.1);});
+}
 function resolveCollision(x,z,r,feet=-Infinity){
   let rx=x,rz=z;
   for(let pass=0;pass<3;pass++)for(const c of WORLD.colliders){

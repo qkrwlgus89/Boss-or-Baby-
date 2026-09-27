@@ -243,6 +243,12 @@
   .runner-card{left:28px;border-left:4px solid #6de4cd}.ability-card{right:28px;border-bottom:3px solid #ffac82}.runner-icon{font-size:32px;color:#6de4cd}.runner-card strong,.ability-card strong{display:block;font-size:16px}.runner-card small,.ability-card small{display:block;color:#a8c0cf;font-size:10px;margin:4px 0}.runner-card b,.ability-card b{font-size:11px;color:#8ee8d6}.stamina-track{height:5px;background:#446072;width:150px;margin-top:9px}#stamina-fill{height:100%;background:#6de4cd;width:100%}
   .coffee-card{position:absolute;right:28px;bottom:166px;z-index:300;width:273px;background:#173648ed;border:1px solid #638d9c;border-left:4px solid #d8a76e;padding:14px 18px;border-radius:6px;pointer-events:none}.coffee-card strong{font-size:16px}.coffee-card small{display:block;font-size:11px;color:#b6d1d5;margin:5px 0}.coffee-card b{float:right;color:#ffc98d;font-size:12px}.coffee-track{height:4px;background:#465b62;margin-top:9px}#coffee-fill{height:100%;background:#e7bc87;width:100%}
   #game-sound{position:absolute;right:22px;top:22px;z-index:380;padding:9px 12px;border:1px solid #b7cbd055;background:#142733cc;color:#edf4f2;font-size:11px;font-weight:700;letter-spacing:.06em;backdrop-filter:blur(8px)}#game-sound:hover{border-color:#ffd49b;color:#ffd49b}
+  .visual-quality{display:inline-flex;align-items:center;gap:9px;color:#b8cbc9;font-size:11px;letter-spacing:.06em}
+  .visual-quality select{font:inherit;color:#edf4f2;background:#142733;border:1px solid #b7cbd055;border-radius:4px;padding:7px 24px 7px 9px;cursor:pointer;color-scheme:dark}
+  .visual-quality select:focus-visible{outline:2px solid #e8c89a;outline-offset:3px}
+  .howto-quality{margin-bottom:18px}.cust-quality{position:absolute;top:14px;right:14px;z-index:2}
+  .game-quality{position:absolute;right:145px;top:22px;z-index:380}
+  @media(max-width:600px){.game-quality{top:61px;right:22px}.cust-quality{top:8px;right:8px}}
   kbd{display:grid;place-items:center;font:900 22px inherit;background:#f2f5e9;color:#20394a;width:40px;height:42px;border-radius:4px;box-shadow:0 4px 0 #84989c}
   .pointer-hint{background:#102a3dbb;backdrop-filter:blur(5px)}.pointer-hint .big{font-size:34px;font-style:italic}.pointer-hint .small{max-width:460px;color:#cadbe5;line-height:1.9}.tap-instruction{font-size:11px;bottom:22px;color:#d4e6ef;text-shadow:0 2px 6px #000}
   #ability-toast{position:absolute;top:25%;z-index:350;padding:12px 24px;background:#16334be8;border-bottom:2px solid #6de4cd;border-radius:4px;opacity:0;pointer-events:none;font-weight:700;font-size:14px}#ability-toast.show{animation:toast 3s both}@keyframes toast{0%,100%{opacity:0;transform:translateY(8px)}10%,85%{opacity:1;transform:translateY(0)}}
@@ -259,7 +265,6 @@
   #floor-interaction{position:absolute;left:50%;top:58%;transform:translateX(-50%);z-index:300;padding:10px 18px;border:1px solid #a5eed0;border-radius:6px;background:#102d2ee8;color:#effff5;font-size:16px;font-weight:700;pointer-events:none;white-space:nowrap}
   #screen-game.elevator-riding::after{content:'';position:absolute;inset:0;z-index:250;pointer-events:none;background:#091521;animation:elevator-travel .6s ease-in forwards}
   @keyframes elevator-travel{0%{opacity:0}35%,100%{opacity:1}}
-  @media(prefers-reduced-motion:reduce){#screen-game.elevator-riding::after{animation:none;opacity:1}}
   @keyframes rank-up{0%{transform:scale(1)}25%{transform:scale(1.12);border-left-color:#ffd987}100%{transform:scale(1)}}
   /* Chatter. A line spoken by someone you can see floats over their head; a line from
      behind you drops into the subtitle rail instead, so running away never costs the joke. */
@@ -352,6 +357,7 @@
             </dl>
           </section>
         </div>
+        <label class="visual-quality howto-quality">그래픽 <select data-visual-quality aria-label="튜토리얼 그래픽 품질"><option value="performance">성능</option><option value="high" selected>높음</option><option value="ultra">최고</option></select></label>
         <button id="howto-go" type="button">확인했습니다, 시작 <span>↗</span></button>
       </div>
     </div>
@@ -425,6 +431,7 @@
         <div class="option-row" id="option-row"></div>
         <div class="cust-bottom-actions">
           <button class="btn-secondary" id="btn-cust-back">← 모드변경</button>
+          <label class="visual-quality">그래픽 <select data-visual-quality aria-label="캐릭터 그래픽 품질"><option value="performance">성능</option><option value="high" selected>높음</option><option value="ultra">최고</option></select></label>
           <button class="btn-primary" id="btn-cust-go">출근 시작</button>
         </div>
       </div>
@@ -435,6 +442,7 @@
   <section class="screen" id="screen-game">
     <div id="game-canvas-wrap"></div>
     <button id="game-sound" type="button" aria-pressed="true">소리 켜짐 · M</button>
+    <label class="visual-quality game-quality">그래픽 <select data-visual-quality aria-label="게임 그래픽 품질"><option value="performance">성능</option><option value="high" selected>높음</option><option value="ultra">최고</option></select></label>
     <div class="vignette3d"></div>
     <div class="crosshair"></div>
     <div id="floor-interaction" hidden></div>
@@ -487,6 +495,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
+<script src="visual-quality.js"></script>
 <script src="character.js"></script>
 <script src="world.js"></script>
 <script src="movement.js"></script>

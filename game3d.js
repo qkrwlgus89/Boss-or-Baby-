@@ -77,7 +77,8 @@
     zone.innerHTML = '';
 
     custScene = new THREE.Scene();
-    custScene.background = new THREE.Color(0x172b40);
+    custScene.background = new THREE.Color(0x182e36);
+    custScene.fog = new THREE.Fog(0x182e36,5,12);
 
     custCamera = new THREE.PerspectiveCamera(40, zone.clientWidth/zone.clientHeight, 0.1, 10);
     custCamera.position.set(0, 1.0, 3.2);
@@ -90,23 +91,36 @@
     custRenderer.toneMapping = THREE.ACESFilmicToneMapping;
     custRenderer.shadowMap.enabled = true;
     custRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    OfficeVisuals.attach(custRenderer,THREE);
     zone.appendChild(custRenderer.domElement);
 
     const key = new THREE.DirectionalLight(0xfff6ec, 2.3);
     key.position.set(2,3,2);
     key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.camera.left=-2;key.shadow.camera.right=2;key.shadow.camera.top=3;key.shadow.camera.bottom=-2;key.shadow.normalBias=.01;
     custScene.add(key);
-    const fill = new THREE.HemisphereLight(0xcbddec,0x87919c,1.3);
+    const fill = new THREE.HemisphereLight(0xcbddec,0x52493f,.85);
     custScene.add(fill);
-    const front=new THREE.DirectionalLight(0xd9eaff,1.0);front.position.set(-2,2,4);custScene.add(front);
-    const rim = new THREE.DirectionalLight(0xffb88c, 0.6);
-    rim.position.set(-2,1,-2);
+    const front=new THREE.DirectionalLight(0xd9eaff,.55);front.position.set(-2,2,4);custScene.add(front);
+    const rim = new THREE.DirectionalLight(0xffd8aa, 1.8);
+    rim.position.set(-2,2.5,-2);
     custScene.add(rim);
 
-    // simple ground disc
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(1.6,24), new THREE.MeshStandardMaterial({color:0x304d65}));
+    // Continuous studio floor and a low machined plinth: feet read as grounded.
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(12,96), new THREE.MeshStandardMaterial({color:0x233d43,roughness:.84}));
     ground.rotation.x = -Math.PI/2;ground.receiveShadow=true;
+    ground.position.y=-.065;
     custScene.add(ground);
+    const plinth=new THREE.Mesh(new THREE.CylinderGeometry(.76,.80,.06,96),new THREE.MeshStandardMaterial({color:0x42595c,roughness:.4,metalness:.3}));
+    plinth.position.y=-.032;plinth.receiveShadow=true;custScene.add(plinth);
+    const trim=new THREE.Mesh(new THREE.TorusGeometry(.776,.006,8,96),new THREE.MeshStandardMaterial({color:0xc8aa77,metalness:.72,roughness:.3}));
+    trim.rotation.x=Math.PI/2;trim.position.y=-.036;custScene.add(trim);
+    const envCanvas=document.createElement('canvas');envCanvas.width=256;envCanvas.height=128;
+    const ec=envCanvas.getContext('2d'),gradient=ec.createLinearGradient(0,0,0,128);
+    gradient.addColorStop(0,'#8eabbf');gradient.addColorStop(.52,'#d6d5c4');gradient.addColorStop(1,'#293d41');
+    ec.fillStyle=gradient;ec.fillRect(0,0,256,128);ec.fillStyle='#fff3dc';ec.fillRect(24,30,40,40);
+    const env=new THREE.CanvasTexture(envCanvas);env.colorSpace=THREE.SRGBColorSpace;
+    const pmrem=new THREE.PMREMGenerator(custRenderer),envTarget=pmrem.fromEquirectangular(env);
+    custScene.environment=envTarget.texture;custScene.userData.environmentTarget=envTarget;env.dispose();pmrem.dispose();
 
     rebuildCustMesh();
 
@@ -130,9 +144,11 @@
   }
 
   function disposeMesh(mesh){
-    const geometries = new Set(), materials = new Set();
-    mesh.traverse(o=>{if(o.geometry) geometries.add(o.geometry); if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));});
-    geometries.forEach(g=>g.dispose()); materials.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
+    const geometries = new Set(), materials = new Set(), textures=new Set();
+    mesh.traverse(o=>{if(o.geometry) geometries.add(o.geometry);if(o.shadow)o.shadow.dispose(); if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));});
+    geometries.forEach(g=>g.dispose()); materials.forEach(m=>{for(const value of Object.values(m))if(value?.isTexture)textures.add(value);m.dispose();});
+    textures.forEach(t=>t.dispose());
+    if(mesh.userData.environmentTarget)mesh.userData.environmentTarget.dispose();
   }
 
   function rebuildCustMesh(){
@@ -319,6 +335,7 @@
     renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    OfficeVisuals.attach(renderer,THREE);
     wrap.appendChild(renderer.domElement);
 
     buildWorld(scene, THREE, renderer);

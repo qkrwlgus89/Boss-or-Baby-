@@ -115,7 +115,13 @@
       const l=new T.Group();l.position.set(x,y,z);g.add(l);
       const aluminium=material(0x839197,{metalness:.85,roughness:.28});rounded(l,aluminium,0,0,.07,1,.025,.65,.022);rounded(l,dark,0,-.015,.07,.97,.005,.61,.002);
       const screen=new T.Group();screen.position.set(0,.32,-.23);screen.rotation.x=-.12;l.add(screen);
-      rounded(screen,dark,0,0,0,1.02,.66,.022,.025);documentPlane(screen,night?'inbox':groups.length===1?'mailList':'offer',0,0,.015,.96,.60,true);
+      const housing=rounded(screen,dark,0,0,0,1.02,.66,.022,.025);
+      housing.name='laptop-screen-housing';housing.geometry.computeBoundingBox();
+      // Include the bevel: the former .015 offset left only .00004m clearance,
+      // causing depth fighting on distant laptops as the camera moved.
+      const displayZ=housing.geometry.boundingBox.max.z+.004;
+      const display=documentPlane(screen,night?'inbox':groups.length===1?'mailList':'offer',0,0,displayZ,.96,.60,true);
+      display.name='laptop-display';display.receiveShadow=false;
       mesh(screen,new T.SphereGeometry(.007,10,8),material(0x151d22),0,.316,.016);box(screen,gold,0,-.313,.016,.08,.003,.001);
       rounded(l,dark,0,.013,.008,.89,.005,.285,.002);
       const keyMat=material(0x202930,{roughness:.45}),keycap=rounded(l,keyMat,0,0,0,.058,.009,.049,.004),caps=[];
